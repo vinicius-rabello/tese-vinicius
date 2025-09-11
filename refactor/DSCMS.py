@@ -138,11 +138,6 @@ class DSCMS(nn.Module):
         return x3
 
 if __name__ == "__main__":
-    import logging
-    
-    # Set up logging to see the filter numbers
-    logging.basicConfig(level=logging.INFO)
-    
     # Test parameters
     in_channels = 2  # Single channel (e.g., vorticity field)
     out_channels = 2  # Single output channel

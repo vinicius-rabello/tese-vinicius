@@ -1,4 +1,3 @@
-########################################################################################
 import torch
 from torch.utils.data import DataLoader, random_split
 from torch import nn
@@ -26,8 +25,8 @@ def check_gradient_norms(model):
 data_folder = "./data"
 
 # Explicitly provide lists of file names
-lr_files = ["25/window_2003.npy","25/window_2004.npy","25/window_2005.npy","25/window_2006.npy"]
-hr_files = ["100/window_2003.npy","100/window_2004.npy","100/window_2005.npy","100/window_2006.npy"]
+lr_files = ["25/window_2003.npy"]#,"25/window_2004.npy","25/window_2005.npy","25/window_2006.npy"]
+hr_files = ["100/window_2003.npy"]#,"100/window_2004.npy","100/window_2005.npy","100/window_2006.npy"]
 
 dataset = SuperResNpyDataset2(data_folder, lr_files, hr_files)
 
@@ -48,7 +47,7 @@ model = DSCMS(in_channels=2, out_channels=2, factor_filter_num=3)
 model = torch.nn.DataParallel(model)
 model = model.to(device)
 
-def hook(module, output):
+def hook(module, input, output):
     # Check if the output is a tuple, which can happen in some layers
     if isinstance(output, tuple):
         output = output[0]  # Extract the tensor if it's a tuple
@@ -84,7 +83,7 @@ class VGGPerceptualLoss(nn.Module):
     def __init__(self, layer=8):
         super(VGGPerceptualLoss, self).__init__()
         vgg = models.vgg16(weights=models.VGG16_Weights.IMAGENET1K_V1).features[:layer]  # Extract first few layers
-        self.vgg = vgg.eval().cuda()  # Move to GPU
+        self.vgg = vgg.eval().to(device)  # Move to GPU
         for param in self.vgg.parameters():
             param.requires_grad = False  # Freeze VGG weights
         self.criterion = nn.L1Loss()  # L1 loss for feature maps
@@ -94,7 +93,7 @@ class VGGPerceptualLoss(nn.Module):
         y_features = self.vgg(y)
         return self.criterion(x_features, y_features)
 
-vgg_loss = VGGPerceptualLoss().cuda()  # Initialize VGG perceptual loss
+vgg_loss = VGGPerceptualLoss().to(device)  # Initialize VGG perceptual loss
 
 lpips_weight = 1.0
 vgg_weight = 0.01  # Small weight for perceptual loss
@@ -103,7 +102,7 @@ vgg_weight = 0.01  # Small weight for perceptual loss
 criterion = nn.L1Loss()
 optimizer = optim.Adam(model.parameters(), lr=learning_rate,weight_decay=1e-4)
 
-scheduler = ReduceLROnPlateau(optimizer, mode='min', patience=5, factor=0.5, verbose=True)
+scheduler = ReduceLROnPlateau(optimizer, mode='min', patience=5, factor=0.5)
 
 # Training Loops
 model.train()
@@ -163,10 +162,10 @@ for epoch in range(num_epochs):
     current_lr = optimizer.param_groups[0]['lr']
 
     print(f"Epoch [{epoch+1}/{num_epochs}], Loss Train.: {avg_loss:.6f}, Loss Val.: {val_loss:.6f}, , NER: {NER:.6f}, Learning rate: {current_lr}")
-    with open("trashes/output_PRUSR.txt", "a") as f:
+    with open("output_PRUSR.txt", "a") as f:
         f.write(f"Epoch [{epoch+1}/{num_epochs}], Loss Train.: {avg_loss:.4f}, Loss Val.: {val_loss:.4f}, Loss Bi. {mse_loss:.4f}, , NER: {NER:.6f},Learning rate: {current_lr}\n")
 
 
     # Save model checkpoint every 10 epochs
     if (epoch+1) % 2 == 1:
-        torch.save(model.state_dict(), f'../weights/2D_check1/Reza_{epoch+1}.pth')
+        torch.save(model.state_dict(), f'test_{epoch+1}.pth')
