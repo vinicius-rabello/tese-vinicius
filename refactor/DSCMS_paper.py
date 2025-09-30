@@ -11,117 +11,101 @@ class DSCMS(nn.Module):
     Ref: http://www.seas.ucla.edu/fluidflow/lib/hDSC_MS.py
     """
 
-    def __init__(self, in_channels: int, out_channels: int, factor_filter_num: int = 3):
+    def __init__(self, in_channels: int, out_channels: int):
         super(DSCMS, self).__init__()
 
         # Down-sampled skip-connection model (DSC)
-        f_num1 = int(factor_filter_num * 32)
-        logger.info(f"f_num1 = {f_num1} / 32, factor = {factor_filter_num}")
-
-        self.max_pool = nn.MaxPool2d(kernel_size=8, stride=8,return_indices=True)
-        self.unpool = nn.MaxUnpool2d(kernel_size=8, stride=8)
-
-        self.activation = nn.ReLU(inplace=True)
-        #self.activation = nn.LeakyReLU(negative_slope=0.01)
+        self.activation = nn.ReLU()
         
-        self.dsc1_mp = nn.MaxPool2d(kernel_size=8, padding=0)
+        self.down_1 = nn.MaxPool2d(kernel_size=8, padding=0)
         self.dsc1_layers = nn.Sequential(
-            nn.Conv2d(in_channels=in_channels, out_channels=f_num1, kernel_size=3, padding=1),
+            nn.Conv2d(in_channels=in_channels, out_channels=32, kernel_size=3, padding='same'),
             self.activation,
-            nn.Conv2d(in_channels=f_num1, out_channels=f_num1, kernel_size=3, padding=1),
+            nn.Conv2d(in_channels=32, out_channels=32, kernel_size=3, padding='same'),
             self.activation,
             nn.Upsample(scale_factor=2, mode="bilinear", align_corners=False),
         )
-        # Regarding `algin_corners=False`, see the below
-        # https://qiita.com/matsxxx/items/fe24b9c2ac6d9716fdee
-        # https://discuss.pytorch.org/t/what-we-should-use-align-corners-false/22663/20
 
-        self.dsc2_mp = nn.MaxPool2d(kernel_size=4, padding=0)
+        self.down_2 = nn.MaxPool2d(kernel_size=4, padding=0)
         self.dsc2_layers = nn.Sequential(
             nn.Conv2d(
-                in_channels=in_channels + f_num1, out_channels=f_num1, kernel_size=3, padding=1
+                in_channels=in_channels + 32, out_channels=32, kernel_size=3, padding='same'
             ),
             self.activation,
-            nn.Conv2d(in_channels=f_num1, out_channels=f_num1, kernel_size=3, padding=1),
+            nn.Conv2d(in_channels=32, out_channels=32, kernel_size=3, padding='same'),
             self.activation,
             nn.Upsample(scale_factor=2, mode="bilinear", align_corners=False),
         )
 
-        self.dsc3_mp = nn.MaxPool2d(kernel_size=2, padding=0)
+        self.down_3 = nn.MaxPool2d(kernel_size=2, padding=0)
         self.dsc3_layers = nn.Sequential(
             nn.Conv2d(
-                in_channels=in_channels + f_num1, out_channels=f_num1, kernel_size=3, padding=1
+                in_channels=in_channels + 32, out_channels=32, kernel_size=3, padding='same'
             ),
             self.activation,
-            nn.Conv2d(in_channels=f_num1, out_channels=f_num1, kernel_size=3, padding=1),
+            nn.Conv2d(in_channels=32, out_channels=32, kernel_size=3, padding='same'),
             self.activation,
             nn.Upsample(scale_factor=2, mode="bilinear", align_corners=False),
         )
 
         self.dsc4_layers = nn.Sequential(
             nn.Conv2d(
-                in_channels=in_channels + f_num1, out_channels=f_num1, kernel_size=3, padding=1
+                in_channels=in_channels + 32, out_channels=32, kernel_size=3, padding='same'
             ),
             self.activation,
-            nn.Conv2d(in_channels=f_num1, out_channels=f_num1, kernel_size=3, padding=1),
+            nn.Conv2d(in_channels=32, out_channels=32, kernel_size=3, padding='same'),
             self.activation,
         )
 
-        # Multi-scale model (MS)
-        f_num2 = int(factor_filter_num * 8)
-        logger.info(f"f_num2 = {f_num2} / 8, factor = {factor_filter_num}")
-
         self.ms1_layers = nn.Sequential(
-            nn.Conv2d(in_channels=in_channels, out_channels=2 * f_num2, kernel_size=5, padding=2),
+            nn.Conv2d(in_channels=in_channels, out_channels=16, kernel_size=5, padding='same'),
             self.activation,
-            nn.Conv2d(in_channels=2 * f_num2, out_channels=f_num2, kernel_size=5, padding=2),
+            nn.Conv2d(in_channels=16, out_channels=8, kernel_size=5, padding='same'),
             self.activation,
-            nn.Conv2d(in_channels=f_num2, out_channels=f_num2, kernel_size=5, padding=2),
+            nn.Conv2d(in_channels=8, out_channels=8, kernel_size=5, padding='same'),
             self.activation,
         )
 
         self.ms2_layers = nn.Sequential(
-            nn.Conv2d(in_channels=in_channels, out_channels=2 * f_num2, kernel_size=9, padding=4),
+            nn.Conv2d(in_channels=in_channels, out_channels=16, kernel_size=9, padding='same'),
             self.activation,
-            nn.Conv2d(in_channels=2 * f_num2, out_channels=f_num2, kernel_size=9, padding=4),
+            nn.Conv2d(in_channels=16, out_channels=8, kernel_size=9, padding='same'),
             self.activation,
-            nn.Conv2d(in_channels=f_num2, out_channels=f_num2, kernel_size=9, padding=4),
+            nn.Conv2d(in_channels=8, out_channels=8, kernel_size=9, padding='same'),
             self.activation,
         )
 
         self.ms3_layers = nn.Sequential(
-            nn.Conv2d(in_channels=in_channels, out_channels=2 * f_num2, kernel_size=13, padding=6),
+            nn.Conv2d(in_channels=in_channels, out_channels=16, kernel_size=13, padding='same'),
             self.activation,
-            nn.Conv2d(in_channels=2 * f_num2, out_channels=f_num2, kernel_size=13, padding=6),
+            nn.Conv2d(in_channels=16, out_channels=8, kernel_size=13, padding='same'),
             self.activation,
-            nn.Conv2d(in_channels=f_num2, out_channels=f_num2, kernel_size=13, padding=6),
+            nn.Conv2d(in_channels=8, out_channels=8, kernel_size=13, padding='same'),
             self.activation,
         )
 
         self.ms4_layers = nn.Sequential(
             nn.Conv2d(
-                in_channels=(f_num2 * 3 + in_channels),
-                out_channels=f_num2,
+                in_channels=(8 * 3 + in_channels),
+                out_channels=8,
                 kernel_size=7,
                 padding=3,
             ),
-            #nn.BatchNorm2d(f_num2),
             self.activation,
-            nn.Conv2d(in_channels=f_num2, out_channels=f_num2, kernel_size=5, padding=2),
+            nn.Conv2d(in_channels=8, out_channels=3, kernel_size=5, padding=2),
             self.activation,
-            #nn.Dropout2d(p=0.3),
         )
 
         # After concatenating DSC and MS
         self.final_layers = nn.Conv2d(
-            in_channels=f_num1 + f_num2, out_channels=out_channels, kernel_size=3, padding=1
+            in_channels=32 + 3, out_channels=out_channels, kernel_size=3, padding=1
         )
 
     def _dsc(self, x):
-        x1 = self.dsc1_layers(self.dsc1_mp(x))
-        mp2 = self.dsc2_mp(x)
+        x1 = self.dsc1_layers(self.down_1(x))
+        mp2 = self.down_2(x)
         x2 = self.dsc2_layers(torch.cat([x1, mp2], dim=1))
-        mp3 = self.dsc3_mp(x)
+        mp3 = self.down_3(x)
         x3 = self.dsc3_layers(torch.cat([x2, mp3], dim=1))
         return self.dsc4_layers(torch.cat([x, x3], dim=1))
 
@@ -141,7 +125,6 @@ if __name__ == "__main__":
     # Test parameters
     in_channels = 2  # Single channel (e.g., vorticity field)
     out_channels = 2  # Single output channel
-    factor_filter_num = 3  # Filter scaling factor
     batch_size = 32
     height, width = 128, 128  # Typical fluid dynamics grid size
     
@@ -153,9 +136,8 @@ if __name__ == "__main__":
     print("Creating DSCMS model...")
     print(f"  Input channels: {in_channels}")
     print(f"  Output channels: {out_channels}")
-    print(f"  Filter factor: {factor_filter_num}")
     
-    model = DSCMS(in_channels=in_channels, out_channels=out_channels, factor_filter_num=factor_filter_num)
+    model = DSCMS(in_channels=in_channels, out_channels=out_channels)
     
     # Count parameters
     total_params = sum(p.numel() for p in model.parameters())
@@ -199,9 +181,9 @@ if __name__ == "__main__":
     print("\nTesting DSC branch intermediate shapes...")
     with torch.no_grad():
         # Test DSC pooling operations
-        dsc1_pooled = model.dsc1_mp(x)
-        dsc2_pooled = model.dsc2_mp(x)
-        dsc3_pooled = model.dsc3_mp(x)
+        dsc1_pooled = model.down_1(x)
+        dsc2_pooled = model.down_2(x)
+        dsc3_pooled = model.down_3(x)
         
         print(f"  Original input: {x.shape}")
         print(f"  DSC1 pooled (8x8): {dsc1_pooled.shape}")

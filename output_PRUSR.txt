@@ -1,3 +1,18 @@
 Epoch [1/25], Loss Train.: 0.1632, Loss Val.: 0.6507, Loss Bi. 0.0000, , NER: 0.000272,Learning rate: 0.0001
 Epoch [2/25], Loss Train.: 0.0534, Loss Val.: 0.3024, Loss Bi. 0.0000, , NER: 0.000130,Learning rate: 0.0001
 Epoch [3/25], Loss Train.: 0.0386, Loss Val.: 0.2673, Loss Bi. 0.0000, , NER: 0.000111,Learning rate: 0.0001
+Epoch [1/2], Loss Train.: 0.2412, Loss Val.: 1.3875, Loss Bi. 0.0000, , NER: 0.000618,Learning rate: 0.0001
+Epoch [1/2], Loss Train.: 0.2352, Loss Val.: 1.6312,Learning rate: 0.0001
+Epoch [2/2], Loss Train.: 0.1756, Loss Val.: 0.9660,Learning rate: 0.0001
+Epoch [1/2], Loss Train.: 0.1824, Loss Val.: 0.5926,Learning rate: 0.0001
+Epoch [2/2], Loss Train.: 0.0534, Loss Val.: 0.2526,Learning rate: 0.0001
+Epoch [1/2], Loss Train.: 0.2437, Loss Val.: 0.1858, Learning rate: 0.0001
+Epoch [2/2], Loss Train.: 0.1670, Loss Val.: 0.1334, Learning rate: 0.0001
+Epoch [1/10], Loss Train.: 0.2480, Loss Val.: 0.2214, Learning rate: 0.0001
+Epoch [2/10], Loss Train.: 0.1883, Loss Val.: 0.1132, Learning rate: 0.0001
+Epoch [3/10], Loss Train.: 0.0820, Loss Val.: 0.0554, Learning rate: 0.0001
+Epoch [4/10], Loss Train.: 0.0433, Loss Val.: 0.0349, Learning rate: 0.0001
+Epoch [5/10], Loss Train.: 0.0310, Loss Val.: 0.0277, Learning rate: 0.0001
+Epoch [6/10], Loss Train.: 0.0274, Loss Val.: 0.0261, Learning rate: 0.0001
+Epoch [7/10], Loss Train.: 0.0242, Loss Val.: 0.0226, Learning rate: 0.0001
+Epoch [8/10], Loss Train.: 0.0230, Loss Val.: 0.0219, Learning rate: 0.0001
