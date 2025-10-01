@@ -111,6 +111,12 @@ class PRUSR(nn.Module):
             self.activation,
             nn.Conv2d(in_channels=32, out_channels=out_channels, kernel_size=3, padding='same'),
         )
+
+    def _ps(self, x):
+        x1 = self.ps1_layers(x)        
+        x2 = self.ps2_layers(x)
+        x3 = self.ps3_layers(x)  
+        return self.ps_final_layers(torch.cat([x, x1, x2, x3], dim=1))
     
     def _u_path(self, x):
         enc1 = self.enc1_layers(x)
@@ -122,13 +128,6 @@ class PRUSR(nn.Module):
         dec2 = self.dec2_layers(dec3 + enc2)
         dec1 = self.dec1_layers(dec2 + enc1)
         return dec1
-
-    def _ps(self, x):
-        # x = self.activation(x)  # Apply activation before layers
-        x1 = self.ps1_layers(x)        
-        x2 = self.ps2_layers(x)
-        x3 = self.ps3_layers(x)  
-        return self.ps_final_layers(torch.cat([x, x1, x2, x3], dim=1))
 
     def forward(self, x):
         x1 = self._ps(x)
