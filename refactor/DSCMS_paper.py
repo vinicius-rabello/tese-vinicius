@@ -200,7 +200,10 @@ if __name__ == "__main__":
         print(f"  MS1 output (5x5 kernels): {ms1_out.shape}")
         print(f"  MS2 output (9x9 kernels): {ms2_out.shape}")
         print(f"  MS3 output (13x13 kernels): {ms3_out.shape}")
-    
-    print("\n" + "=" * 60)
-    print("✅ All tests passed! DSCMS model is working correctly.")
-    print("=" * 60)
+
+        total_params = sum(p.numel() for p in model.parameters())
+        
+        print("\n" + "=" * 60)
+        print("✅ All tests passed! PRUSR model is working correctly.")
+        print(f"📊 Total Parameters: {total_params:,}")
+        print("=" * 60)
