@@ -34,10 +34,10 @@ class ResidualBlock(nn.Module):
         return x + self.block(x)
     
 class Generator(nn.Module):
-    def __init__(self, img_channels, num_features=64, num_residuals=6):
+    def __init__(self, in_channels, num_features=64, num_residuals=6):
         super().__init__()
         self.initial = nn.Sequential(
-            nn.Conv2d(in_channels=img_channels, out_channels=64, kernel_size=7, stride=1, padding=3, padding_mode='reflect'),
+            nn.Conv2d(in_channels=in_channels, out_channels=64, kernel_size=7, stride=1, padding=3, padding_mode='reflect'),
             nn.ReLU(inplace=True)
         )
 
@@ -61,7 +61,7 @@ class Generator(nn.Module):
 
         self.last = nn.Conv2d(
             num_features*1,
-            img_channels,
+            in_channels,
             kernel_size=7,
             stride=1,
             padding=3,
@@ -84,7 +84,7 @@ def test():
     batch_size = 32
     height, width = 128, 128  # Typical fluid dynamics grid size
     x = torch.randn(batch_size, in_channels, height, width)
-    model = Generator(img_channels=in_channels)
+    model = Generator(in_channels=in_channels)
     pred = model(x)
     print(f"Input shape: {x.shape}")
     print(f"Output shape: {pred.shape}")
