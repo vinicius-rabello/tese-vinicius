@@ -1,6 +1,5 @@
 import torch
 from dataset import cycleGANDataset
-import sys
 from torch.utils.data import DataLoader
 import torch.nn as nn
 import torch.optim as optim
