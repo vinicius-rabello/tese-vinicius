@@ -261,7 +261,6 @@ def main():
             save_checkpoint(gen_HR, gen_LR, disc_HR, disc_LR, opt_gen, opt_disc,
                           epoch+1, (G_loss, D_loss, cycle_loss), val_cycle_loss,
                           config.ROOT_FOLDER + 'output/weights/CycleGAN_best.pth')
-            print(f"  → New best model saved! (val_cycle_loss: {val_cycle_loss:.6f})")
         
         # Save checkpoint every 2 epochs
         if (epoch+1) % 2 == 0:
