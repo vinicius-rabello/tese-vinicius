@@ -1,5 +1,5 @@
 import torch
-from dataset import cycleGANDataset
+from datasets.super_res_dataset import SuperResDataset
 from torch.utils.data import DataLoader
 import torch.nn as nn
 import torch.optim as optim
@@ -8,6 +8,12 @@ from torchvision.utils import save_image
 from discriminator_model import Discriminator
 from generator_model import Generator
 import config
+import sys
+import os
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+
+from datasets.super_res_dataset import SuperResDataset
 
 def train_fn(disc_HR, disc_LR, gen_HR, gen_LR, loader, opt_disc, opt_gen, L1, mse, d_scaler, g_scaler):
     loop = tqdm(loader, leave=True)
@@ -101,7 +107,7 @@ def main():
     L1 = nn.L1Loss()
     mse = nn.MSELoss()
 
-    dataset = cycleGANDataset(hr_files=['data/100/window_2003.npy'], downsample_factor=4)
+    dataset = SuperResDataset(hr_files=['data/100/window_2003.npy'], downsample_factor=4)
     loader = DataLoader(
         dataset,
         batch_size=config.BATCH_SIZE,

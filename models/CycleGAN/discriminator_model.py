@@ -54,7 +54,7 @@ def test():
     # Test parameters
     in_channels = 2  # Single channel (e.g., vorticity field)
     out_channels = 2  # Single output channel
-    batch_size = 32
+    batch_size = 1
     height, width = 128, 128  # Typical fluid dynamics grid size
     x = torch.randn(batch_size, in_channels, height, width)
     model = Discriminator(in_channels=in_channels)
