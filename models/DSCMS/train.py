@@ -11,6 +11,7 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 import matplotlib.pyplot as plt
 import os
 from datasets.super_res_dataset import SuperResDataset
+from datasets.sr_tiny_dataset import SRTinyDataset
 
 
 def get_data_loaders(
@@ -133,7 +134,7 @@ def main():
     os.makedirs(config.ROOT_FOLDER + "output/images", exist_ok=True)
     
     # Load dataset
-    dataset = SuperResDataset(
+    dataset = SRTinyDataset(
         hr_files=['data/100/window_2003.npy'], downsample_factor=4)
     train_loader, val_loader = get_data_loaders(
         dataset, batch_size=config.BATCH_SIZE)
@@ -182,8 +183,8 @@ def main():
             save_checkpoint(model, optimizer, epoch+1, train_loss, val_loss,
                           config.ROOT_FOLDER + 'output/weights/DSCMS_best.pth')
         
-        # Save checkpoint every 2 epochs
-        if (epoch+1) % 2 == 0:
+        # Save checkpoint every 50 epochs
+        if (epoch+1) % 50 == 0:
             save_checkpoint(model, optimizer, epoch+1, train_loss, val_loss,
                           config.ROOT_FOLDER + f'output/weights/DSCMS_epoch{epoch+1}.pth')
 

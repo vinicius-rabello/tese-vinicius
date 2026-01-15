@@ -12,6 +12,7 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 import matplotlib.pyplot as plt
 import os
 from datasets.super_res_dataset import SuperResDataset
+from datasets.sr_tiny_dataset import SRTinyDataset
 
 class CombinedMSSSIMLoss(nn.Module):
     def __init__(self, a=10, b=1):
@@ -145,7 +146,7 @@ def main():
     os.makedirs(config.ROOT_FOLDER + "output/images", exist_ok=True)
     
     # Load dataset
-    dataset = SuperResDataset(
+    dataset = SRTinyDataset(
         hr_files=['data/100/window_2003.npy'], downsample_factor=4)
     train_loader, val_loader = get_data_loaders(
         dataset, batch_size=config.BATCH_SIZE)
@@ -193,9 +194,9 @@ def main():
             best_val_loss = val_loss
             save_checkpoint(model, optimizer, epoch+1, train_loss, val_loss,
                           config.ROOT_FOLDER + 'output/weights/PRUSR_best.pth')
-        
-        # Save checkpoint every 2 epochs
-        if (epoch+1) % 2 == 0:
+
+        # Save checkpoint every 50 epochs
+        if (epoch+1) % 50 == 0:
             save_checkpoint(model, optimizer, epoch+1, train_loss, val_loss,
                           config.ROOT_FOLDER + f'output/weights/PRUSR_epoch{epoch+1}.pth')
 

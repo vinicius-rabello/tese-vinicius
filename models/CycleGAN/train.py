@@ -10,6 +10,7 @@ from models.CycleGAN import config
 import os
 from typing import Tuple
 from datasets.super_res_dataset import SuperResDataset
+from datasets.sr_tiny_dataset import SRTinyDataset
 
 
 def get_data_loaders(
@@ -226,7 +227,7 @@ def main():
     L1 = nn.L1Loss()
     mse = nn.MSELoss()
 
-    dataset = SuperResDataset(hr_files=['data/100/window_2003.npy'], downsample_factor=4)
+    dataset = SRTinyDataset(hr_files=['data/100/window_2003.npy'], downsample_factor=4)
     train_loader, val_loader = get_data_loaders(dataset, batch_size=config.BATCH_SIZE)
 
     g_scaler = torch.cuda.amp.GradScaler()
@@ -261,9 +262,9 @@ def main():
             save_checkpoint(gen_HR, gen_LR, disc_HR, disc_LR, opt_gen, opt_disc,
                           epoch+1, (G_loss, D_loss, cycle_loss), val_cycle_loss,
                           config.ROOT_FOLDER + 'output/weights/CycleGAN_best.pth')
-        
-        # Save checkpoint every 2 epochs
-        if (epoch+1) % 2 == 0:
+
+        # Save checkpoint every 50 epochs
+        if (epoch+1) % 50 == 0:
             save_checkpoint(gen_HR, gen_LR, disc_HR, disc_LR, opt_gen, opt_disc,
                           epoch+1, (G_loss, D_loss, cycle_loss), val_cycle_loss,
                           config.ROOT_FOLDER + f'output/weights/CycleGAN_epoch{epoch+1}.pth')
