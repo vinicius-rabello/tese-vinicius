@@ -9,14 +9,21 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 lpips_model = lpips.LPIPS(net='vgg').to(device)
 
+def mseLoss(iy, ihr, cmp, cnt):
+    y = iy.cpu()[:, cmp:cmp+1, :, :].numpy()
+    hr = ihr.cpu()[:, cmp:cmp+1, :, :].numpy()
+
+    # Calculate MSE (Mean Squared Error)
+    mse = np.mean((y - hr) ** 2)
+
+    return mse
+
 def ssimLoss(iy,ihr,cmp,cnt):
     output = iy.cpu().squeeze().numpy()
     high = ihr.cpu().squeeze().numpy()
 
     lmin = min(output[cmp,:,:].min(),high[cmp,:,:].min()) * 1.01
     lmax = max(output[cmp,:,:].max(),high[cmp,:,:].max()) * 1.01
-    if (lmin<0.0 and lmax<0.0):
-        print("negative ",cnt)
     lmin = min(lmin,0.0)
     lmax = max(lmax,1.0)
 

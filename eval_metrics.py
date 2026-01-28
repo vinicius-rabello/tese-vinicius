@@ -1,11 +1,14 @@
 import numpy as np
 import torch
 import torch.nn.functional as F
-from torch.utils.data import DataLoader
-from DSCMS import DSCMS
-from loader import SuperResNpyDataset2
+from torch.utils.data import DataLoader, random_split
+from models.DSCMS.model import DSCMS
+from models.DSCMS import config
+from datasets.super_res_dataset import SuperResDataset
+from datasets.sr_tiny_dataset import SRTinyDataset
 from metrics.image_metrics import ssimLoss, psnrLoss, lpipsLoss, fsimLoss, epiLoss
 from metrics.physical_metrics import LossTKE
+from typing import Tuple
 
 def compute_metrics_for_dataset(model, dataloader, device):
     # Store metrics for u and v
@@ -60,22 +63,36 @@ def print_and_save_averages(metrics, save_path="metrics_averages.txt"):
             print(f"{key}: mean={mean:.6f}, std={std:.6f}")
             f.write(f"{key}: mean={mean:.6f}, std={std:.6f}\n")
 
+def get_data_loaders(
+    dataset: torch.utils.data.Dataset,
+    batch_size: int = 32,
+    val_split: float = 0.2
+) -> Tuple[DataLoader, DataLoader]:
+    """
+    Splits the dataset into training and validation sets and returns their DataLoaders.
+    """
+    train_size = int((1 - val_split) * len(dataset))
+    val_size = len(dataset) - train_size
+    train_dataset, val_dataset = random_split(dataset, [train_size, val_size])
+    train_loader = DataLoader(
+        train_dataset, batch_size=batch_size, shuffle=True)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
+    return train_loader, val_loader
+
 if __name__ == "__main__":
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     # Model and data
-    model = DSCMS(2, 2, 3)
+    model = DSCMS(2, 2)
     model = torch.nn.DataParallel(model)
     model = model.to(device)
-    model.load_state_dict(torch.load('./25.pth', map_location=torch.device(device)))
+    model.load_state_dict(torch.load('./models/DSCMS/output/weights/DSCMS_best.pth', map_location=torch.device(device)))
     model.eval()
-
     mean = np.array([-0.00561308, 0.07556629])
     std = np.array([0.32576539, 0.38299691])
-    data_folder = "./data"
-    lr_files = ["25/window_2023.npy"]
-    hr_files = ["100/window_2023.npy"]
-    dataset = SuperResNpyDataset2(data_folder, lr_files, hr_files, 0, mean, std)
-    dataloader = DataLoader(dataset, batch_size=1, shuffle=False)
+    # Load dataset
+    dataset = SRTinyDataset(
+        hr_files=['data/100/window_2023.npy'], downsample_factor=4)
+    dataloader, _ = get_data_loaders(dataset, batch_size=config.BATCH_SIZE)
 
     metrics = compute_metrics_for_dataset(model, dataloader, device)
     print_and_save_averages(metrics)
