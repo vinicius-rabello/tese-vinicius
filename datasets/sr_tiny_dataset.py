@@ -56,7 +56,7 @@ if __name__ == "__main__":
     # Optional: Check data types
     print(f"Dtype of LR image: {lr_sample.dtype}")
     print(f"Dtype of HR image: {hr_sample.dtype}")
-    plt.imsave('lr_sample_psi1.png', lr_sample.numpy()[0])
-    plt.imsave('hr_sample_psi1.png', hr_sample.numpy()[0])
-    plt.imsave('lr_sample_psi2.png', lr_sample.numpy()[1])
-    plt.imsave('hr_sample_psi2.png', hr_sample.numpy()[1])
+    plt.imsave('lr_u.png', lr_sample.numpy()[0])
+    plt.imsave('hr_u.png', hr_sample.numpy()[0])
+    plt.imsave('lr_v.png', lr_sample.numpy()[1])
+    plt.imsave('hr_v.png', hr_sample.numpy()[1])

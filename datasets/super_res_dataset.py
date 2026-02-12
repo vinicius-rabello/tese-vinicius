@@ -9,6 +9,7 @@ class SuperResDataset(Dataset):
     def __init__(self, hr_files, downsample_factor=4):
         # Load HR data from .npy files
         self.hr_files = [np.load(file).astype(np.float32) for file in hr_files]
+        print(self.hr_files[0].shape)
         self.hr_data = np.concatenate(self.hr_files, axis=0)[:,:,:,2:4]
 
         # Downscale and Upscale HR data to create LR data
@@ -43,7 +44,7 @@ if __name__ == "__main__":
     print(f"Dataset length: {len(dataset)}")
 
     # Get the first item (index 0)
-    lr_sample, hr_sample = dataset[0]
+    lr_sample, hr_sample = dataset[1987]
 
     # Print the shapes
     print(f"Shape of the returned Low-Resolution (LR) image: {lr_sample.shape}")
@@ -52,7 +53,7 @@ if __name__ == "__main__":
     # Optional: Check data types
     print(f"Dtype of LR image: {lr_sample.dtype}")
     print(f"Dtype of HR image: {hr_sample.dtype}")
-    plt.imsave('lr_sample_psi1.png', lr_sample.numpy()[0])
-    plt.imsave('hr_sample_psi1.png', hr_sample.numpy()[0])
-    plt.imsave('lr_sample_psi2.png', lr_sample.numpy()[1])
-    plt.imsave('hr_sample_psi2.png', hr_sample.numpy()[1])
+    plt.imsave('lr_u.png', lr_sample.numpy()[0])
+    plt.imsave('hr_u.png', hr_sample.numpy()[0])
+    plt.imsave('lr_v.png', lr_sample.numpy()[1])
+    plt.imsave('hr_v.png', hr_sample.numpy()[1])
