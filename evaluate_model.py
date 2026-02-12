@@ -14,13 +14,13 @@ def evaluate_model(model, test_loader, device):
     model.eval()
     
     metrics = {
-        'mse': {'psi1': [], 'psi2': []},
-        'ssim': {'psi1': [], 'psi2': []},
-        'psnr': {'psi1': [], 'psi2': []},
-        'lpips': {'psi1': [], 'psi2': []},
-        'fsim': {'psi1': [], 'psi2': []},
-        'epi': {'psi1': [], 'psi2': []},
-        'tke': {'psi1': [], 'psi2': []}
+        'mse': {'u': [], 'v': []},
+        'ssim': {'u': [], 'v': []},
+        'psnr': {'u': [], 'v': []},
+        'lpips': {'u': [], 'v': []},
+        'fsim': {'u': [], 'v': []},
+        'epi': {'u': [], 'v': []},
+        'tke': {'u': [], 'v': []}
     }
     
     with torch.no_grad():
@@ -30,19 +30,20 @@ def evaluate_model(model, test_loader, device):
             
             # Compute metrics for each channel
             for channel in range(2):  # psi1 and psi2 components
-                metrics['mse'][f'psi{channel+1}'].append(mseLoss(output, hr, channel, idx))
-                metrics['ssim'][f'psi{channel+1}'].append(ssimLoss(output, hr, channel, idx))
-                metrics['psnr'][f'psi{channel+1}'].append(psnrLoss(output, hr, channel, idx))
-                metrics['lpips'][f'psi{channel+1}'].append(lpipsLoss(output, hr, channel, idx))
-                metrics['fsim'][f'psi{channel+1}'].append(fsimLoss(output, hr, channel, idx))
-                metrics['epi'][f'psi{channel+1}'].append(epiLoss(output, hr, channel, idx))
-                metrics['tke'][f'psi{channel+1}'].append(LossTKE(output, hr, channel, idx))
+                channel_label = 'u' if channel == 0 else 'v'
+                metrics['mse'][channel_label].append(mseLoss(output, hr, channel, idx))
+                metrics['ssim'][channel_label].append(ssimLoss(output, hr, channel, idx))
+                metrics['psnr'][channel_label].append(psnrLoss(output, hr, channel, idx))
+                metrics['lpips'][channel_label].append(lpipsLoss(output, hr, channel, idx))
+                metrics['fsim'][channel_label].append(fsimLoss(output, hr, channel, idx))
+                metrics['epi'][channel_label].append(epiLoss(output, hr, channel, idx))
+                metrics['tke'][channel_label].append(LossTKE(output, hr, channel, idx))
 
     # Aggregate results
     results = {
         k: {
-            'psi1': {'mean': float(np.mean(v['psi1'])), 'std': float(np.std(v['psi1']))},
-            'psi2': {'mean': float(np.mean(v['psi2'])), 'std': float(np.std(v['psi2']))}
+            'u': {'mean': round(float(np.mean(v['u'])), 5), 'std': round(float(np.std(v['u'])), 5)},
+            'v': {'mean': round(float(np.mean(v['v'])), 5), 'std': round(float(np.std(v['v'])), 5)}
         }
         for k, v in metrics.items()
     }
