@@ -3,8 +3,8 @@ import torch
 import json
 import os
 from torch.utils.data import DataLoader
-from models.DSCMS.model import DSCMS
-from models.DSCMS import config
+from models.SRCNN.model import SRCNN
+from models.SRCNN import config
 from datasets.sr_tiny_dataset import SRTinyDataset
 from datasets.super_res_dataset import SuperResDataset
 from metrics.image_metrics import mseLoss, ssimLoss, psnrLoss, lpipsLoss, fsimLoss, epiLoss
@@ -136,6 +136,10 @@ def main(model_name):
             from models.PRUSR.model import PRUSR
             model = PRUSR(2, 2)
             checkpoint_path = './models/PRUSR/output/weights/PRUSR_best.pth'
+        elif model_name == 'SRCNN':
+            from models.SRCNN.model import SRCNN
+            model = SRCNN(2, 2)
+            checkpoint_path = './models/SRCNN/output/weights/SRCNN_best.pth'
         # Add more models here as needed
         else:
             raise ValueError(f"Unknown model: {model_name}")
