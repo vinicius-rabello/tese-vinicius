@@ -45,6 +45,23 @@ class SuperResDataset(Dataset):
         
         return filtered_tensor.real
 
+    def apply_gaussian_low_pass_filter(self, tensor, sigma):
+        C, H, W = tensor.shape
+        freq_domain = torch.fft.fft2(tensor)
+        freq_shifted = torch.fft.fftshift(freq_domain)
+
+        cy, cx = H // 2, W // 2
+        y, x = torch.meshgrid(torch.arange(H), torch.arange(W), indexing='ij')
+        dist_sq = (x - cx)**2 + (y - cy)**2
+        
+        mask = torch.exp(-dist_sq / (2 * (sigma**2)))
+        
+        freq_shifted_filtered = freq_shifted * mask.to(freq_shifted.device)
+        freq_filtered = torch.fft.ifftshift(freq_shifted_filtered)
+        filtered_tensor = torch.fft.ifft2(freq_filtered)
+        
+        return filtered_tensor.real
+
     def __len__(self):
         return self.hr_data.shape[0]
     
@@ -54,12 +71,12 @@ class SuperResDataset(Dataset):
 
         # Aplicar filtro de frequência se o threshold for definido
         if self.freq_threshold is not None:
-            lr_img = self.apply_low_pass_filter(lr_img, self.freq_threshold)
+            lr_img = self.apply_gaussian_low_pass_filter(lr_img, self.freq_threshold)
 
         return lr_img, hr_img
 
 if __name__ == "__main__":
-    dataset = SuperResDataset(hr_files=['data/100/window_2003.npy', 'data/100/window_2004.npy'], downsample_factor=1, freq_threshold=5)
+    dataset = SuperResDataset(hr_files=['data/100/window_2003.npy', 'data/100/window_2004.npy'], downsample_factor=4, freq_threshold=10)
     print(f"Dataset length: {len(dataset)}")
 
     # Get the first item (index 0)
