@@ -1,0 +1,17 @@
+# Output settings
+MODEL_NAME: "sofono"
+ROOT_FOLDER: "models/SoFoNO/test_composite_loss_mse_lpips_0.6_0.4_05_08_2026/"
+DEVICE: "cuda"
+NUM_WORKERS: 4
+
+# Training hyperparameters
+BATCH_SIZE: 8
+NUM_EPOCHS: 2500
+LEARNING_RATE: 0.00004
+
+# Loss settings
+LOSS_MODE: 2
+LOSS_WEIGHTS:
+  mse: 0.6
+  lpips: 0.4
+  kinetic: 0.0

@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.pyc
+
+# Virtual environments
+venv/
+.venv/
+
+# Datasets (large binary data, not code)
+hycom_numpy/
+hycom_dataset/
+
+# Original reference implementations, superseded by models/SoFoNO/ and
+# models/SRNO/. Kept locally for reference; Super-Resolution-Neural-Operator/
+# is already version-controlled separately at github.com/vinicius-rabello/srno.
+# (Leading slash anchors these to the repo root only -- otherwise they'd also
+# match models/SoFoNO/, which we do want tracked.)
+/SoFoNO/
+/Super-Resolution-Neural-Operator/
+
+# Training outputs: checkpoints and sample images (large, reproducible via train.py)
+models/**/output/weights/
+models/**/output/images/
+
+# Notebooks
+.ipynb_checkpoints/
+
+# OS / editor cruft
+.DS_Store

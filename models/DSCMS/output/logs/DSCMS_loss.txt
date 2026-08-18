@@ -1,0 +1,174 @@
+Epoch [1/10], Loss Train.: nan, Loss Val.: nan, Learning rate: 0.0003
+Epoch [2/10], Loss Train.: nan, Loss Val.: nan, Learning rate: 0.0003
+Epoch [3/10], Loss Train.: nan, Loss Val.: nan, Learning rate: 0.0003
+Epoch [4/10], Loss Train.: nan, Loss Val.: nan, Learning rate: 0.0003
+Epoch [5/10], Loss Train.: nan, Loss Val.: nan, Learning rate: 0.0003
+Epoch [6/10], Loss Train.: nan, Loss Val.: nan, Learning rate: 0.00015
+Epoch [7/10], Loss Train.: nan, Loss Val.: nan, Learning rate: 0.00015
+Epoch [8/10], Loss Train.: nan, Loss Val.: nan, Learning rate: 0.00015
+Epoch [9/10], Loss Train.: nan, Loss Val.: nan, Learning rate: 0.00015
+Epoch [10/10], Loss Train.: nan, Loss Val.: nan, Learning rate: 0.00015
+Epoch [1/10] | LR: 0.000300
+  Train -> Total: nan | MSE: nan | LPIPS: nan | Kin: nan
+  Val   -> Total: nan | MSE: nan | LPIPS: nan | Kin: nan
+----------------------------------------------------------------------
+Epoch [2/10] | LR: 0.000300
+  Train -> Total: nan | MSE: nan | LPIPS: nan | Kin: nan
+  Val   -> Total: nan | MSE: nan | LPIPS: nan | Kin: nan
+----------------------------------------------------------------------
+Epoch [3/10] | LR: 0.000300
+  Train -> Total: nan | MSE: nan | LPIPS: nan | Kin: nan
+  Val   -> Total: nan | MSE: nan | LPIPS: nan | Kin: nan
+----------------------------------------------------------------------
+Epoch [4/10] | LR: 0.000300
+  Train -> Total: nan | MSE: nan | LPIPS: nan | Kin: nan
+  Val   -> Total: nan | MSE: nan | LPIPS: nan | Kin: nan
+----------------------------------------------------------------------
+Epoch [5/10] | LR: 0.000300
+  Train -> Total: nan | MSE: nan | LPIPS: nan | Kin: nan
+  Val   -> Total: nan | MSE: nan | LPIPS: nan | Kin: nan
+----------------------------------------------------------------------
+Epoch [6/10] | LR: 0.000150
+  Train -> Total: nan | MSE: nan | LPIPS: nan | Kin: nan
+  Val   -> Total: nan | MSE: nan | LPIPS: nan | Kin: nan
+----------------------------------------------------------------------
+Epoch [7/10] | LR: 0.000150
+  Train -> Total: nan | MSE: nan | LPIPS: nan | Kin: nan
+  Val   -> Total: nan | MSE: nan | LPIPS: nan | Kin: nan
+----------------------------------------------------------------------
+Epoch [8/10] | LR: 0.000150
+  Train -> Total: nan | MSE: nan | LPIPS: nan | Kin: nan
+  Val   -> Total: nan | MSE: nan | LPIPS: nan | Kin: nan
+----------------------------------------------------------------------
+Epoch [9/10] | LR: 0.000150
+  Train -> Total: nan | MSE: nan | LPIPS: nan | Kin: nan
+  Val   -> Total: nan | MSE: nan | LPIPS: nan | Kin: nan
+----------------------------------------------------------------------
+Epoch [10/10] | LR: 0.000150
+  Train -> Total: nan | MSE: nan | LPIPS: nan | Kin: nan
+  Val   -> Total: nan | MSE: nan | LPIPS: nan | Kin: nan
+----------------------------------------------------------------------
+Epoch [1/10] | LR: 0.000300
+  Train -> Total: nan | MSE: nan | LPIPS: 0.000000 | Kin: 0.000000
+  Val   -> Total: nan | MSE: nan | LPIPS: 0.000000 | Kin: 0.000000
+----------------------------------------------------------------------
+Epoch [2/10] | LR: 0.000300
+  Train -> Total: nan | MSE: nan | LPIPS: 0.000000 | Kin: 0.000000
+  Val   -> Total: nan | MSE: nan | LPIPS: 0.000000 | Kin: 0.000000
+----------------------------------------------------------------------
+Epoch [3/10] | LR: 0.000300
+  Train -> Total: nan | MSE: nan | LPIPS: 0.000000 | Kin: 0.000000
+  Val   -> Total: nan | MSE: nan | LPIPS: 0.000000 | Kin: 0.000000
+----------------------------------------------------------------------
+Epoch [1/10] | LR: 0.000300
+  Train -> Total: nan | MSE: nan | LPIPS: 0.000000 | Kin: 0.000000
+  Val   -> Total: nan | MSE: nan | LPIPS: 0.000000 | Kin: 0.000000
+----------------------------------------------------------------------
+Epoch [2/10] | LR: 0.000300
+  Train -> Total: nan | MSE: nan | LPIPS: 0.000000 | Kin: 0.000000
+  Val   -> Total: nan | MSE: nan | LPIPS: 0.000000 | Kin: 0.000000
+----------------------------------------------------------------------
+Epoch [3/10] | LR: 0.000300
+  Train -> Total: nan | MSE: nan | LPIPS: 0.000000 | Kin: 0.000000
+  Val   -> Total: nan | MSE: nan | LPIPS: 0.000000 | Kin: 0.000000
+----------------------------------------------------------------------
+Epoch [4/10] | LR: 0.000300
+  Train -> Total: nan | MSE: nan | LPIPS: 0.000000 | Kin: 0.000000
+  Val   -> Total: nan | MSE: nan | LPIPS: 0.000000 | Kin: 0.000000
+----------------------------------------------------------------------
+Epoch [5/10] | LR: 0.000300
+  Train -> Total: nan | MSE: nan | LPIPS: 0.000000 | Kin: 0.000000
+  Val   -> Total: nan | MSE: nan | LPIPS: 0.000000 | Kin: 0.000000
+----------------------------------------------------------------------
+Epoch [6/10] | LR: 0.000150
+  Train -> Total: nan | MSE: nan | LPIPS: 0.000000 | Kin: 0.000000
+  Val   -> Total: nan | MSE: nan | LPIPS: 0.000000 | Kin: 0.000000
+----------------------------------------------------------------------
+Epoch [7/10] | LR: 0.000150
+  Train -> Total: nan | MSE: nan | LPIPS: 0.000000 | Kin: 0.000000
+  Val   -> Total: nan | MSE: nan | LPIPS: 0.000000 | Kin: 0.000000
+----------------------------------------------------------------------
+Epoch [8/10] | LR: 0.000150
+  Train -> Total: nan | MSE: nan | LPIPS: 0.000000 | Kin: 0.000000
+  Val   -> Total: nan | MSE: nan | LPIPS: 0.000000 | Kin: 0.000000
+----------------------------------------------------------------------
+Epoch [9/10] | LR: 0.000150
+  Train -> Total: nan | MSE: nan | LPIPS: 0.000000 | Kin: 0.000000
+  Val   -> Total: nan | MSE: nan | LPIPS: 0.000000 | Kin: 0.000000
+----------------------------------------------------------------------
+Epoch [10/10] | LR: 0.000150
+  Train -> Total: nan | MSE: nan | LPIPS: 0.000000 | Kin: 0.000000
+  Val   -> Total: nan | MSE: nan | LPIPS: 0.000000 | Kin: 0.000000
+----------------------------------------------------------------------
+Epoch [1/10] | LR: 0.000300
+  Train -> Total: nan | MSE: nan | LPIPS: 0.000000 | Kin: 0.000000
+  Val   -> Total: nan | MSE: nan | LPIPS: 0.000000 | Kin: 0.000000
+----------------------------------------------------------------------
+Epoch [2/10] | LR: 0.000300
+  Train -> Total: nan | MSE: nan | LPIPS: 0.000000 | Kin: 0.000000
+  Val   -> Total: nan | MSE: nan | LPIPS: 0.000000 | Kin: 0.000000
+----------------------------------------------------------------------
+Epoch [3/10] | LR: 0.000300
+  Train -> Total: nan | MSE: nan | LPIPS: 0.000000 | Kin: 0.000000
+  Val   -> Total: nan | MSE: nan | LPIPS: 0.000000 | Kin: 0.000000
+----------------------------------------------------------------------
+Epoch [4/10] | LR: 0.000300
+  Train -> Total: nan | MSE: nan | LPIPS: 0.000000 | Kin: 0.000000
+  Val   -> Total: nan | MSE: nan | LPIPS: 0.000000 | Kin: 0.000000
+----------------------------------------------------------------------
+Epoch [5/10] | LR: 0.000300
+  Train -> Total: nan | MSE: nan | LPIPS: 0.000000 | Kin: 0.000000
+  Val   -> Total: nan | MSE: nan | LPIPS: 0.000000 | Kin: 0.000000
+----------------------------------------------------------------------
+Epoch [6/10] | LR: 0.000150
+  Train -> Total: nan | MSE: nan | LPIPS: 0.000000 | Kin: 0.000000
+  Val   -> Total: nan | MSE: nan | LPIPS: 0.000000 | Kin: 0.000000
+----------------------------------------------------------------------
+Epoch [7/10] | LR: 0.000150
+  Train -> Total: nan | MSE: nan | LPIPS: 0.000000 | Kin: 0.000000
+  Val   -> Total: nan | MSE: nan | LPIPS: 0.000000 | Kin: 0.000000
+----------------------------------------------------------------------
+Epoch [8/10] | LR: 0.000150
+  Train -> Total: nan | MSE: nan | LPIPS: 0.000000 | Kin: 0.000000
+  Val   -> Total: nan | MSE: nan | LPIPS: 0.000000 | Kin: 0.000000
+----------------------------------------------------------------------
+Epoch [9/10] | LR: 0.000150
+  Train -> Total: nan | MSE: nan | LPIPS: 0.000000 | Kin: 0.000000
+  Val   -> Total: nan | MSE: nan | LPIPS: 0.000000 | Kin: 0.000000
+----------------------------------------------------------------------
+Epoch [10/10] | LR: 0.000150
+  Train -> Total: nan | MSE: nan | LPIPS: 0.000000 | Kin: 0.000000
+  Val   -> Total: nan | MSE: nan | LPIPS: 0.000000 | Kin: 0.000000
+----------------------------------------------------------------------
+Epoch [1/10] | LR: 0.000300
+  Train -> Total: 0.009211 | MSE: 0.015351 | LPIPS: 0.000000 | Kin: 0.000000
+  Val   -> Total: 0.001656 | MSE: 0.002760 | LPIPS: 0.000000 | Kin: 0.000000
+----------------------------------------------------------------------
+Epoch [2/10] | LR: 0.000300
+  Train -> Total: 0.001442 | MSE: 0.002403 | LPIPS: 0.000000 | Kin: 0.000000
+  Val   -> Total: 0.001340 | MSE: 0.002233 | LPIPS: 0.000000 | Kin: 0.000000
+----------------------------------------------------------------------
+Epoch [1/2500] | LR: 0.000300
+  Train -> Total: 0.465014 | MSE: 0.153752 | LPIPS: 0.467213 | Kin: 1.396600
+  Val   -> Total: 0.092357 | MSE: 0.008146 | LPIPS: 0.380071 | Kin: 0.057272
+----------------------------------------------------------------------
+Epoch [2/2500] | LR: 0.000300
+  Train -> Total: 0.074699 | MSE: 0.006657 | LPIPS: 0.304837 | Kin: 0.048685
+  Val   -> Total: 0.064795 | MSE: 0.005406 | LPIPS: 0.262760 | Kin: 0.044996
+----------------------------------------------------------------------
+Epoch [3/2500] | LR: 0.000300
+  Train -> Total: 0.058180 | MSE: 0.005046 | LPIPS: 0.240894 | Kin: 0.034869
+  Val   -> Total: 0.054488 | MSE: 0.004679 | LPIPS: 0.234082 | Kin: 0.024322
+----------------------------------------------------------------------
+Epoch [4/2500] | LR: 0.000300
+  Train -> Total: 0.052512 | MSE: 0.004271 | LPIPS: 0.220601 | Kin: 0.029148
+  Val   -> Total: 0.050708 | MSE: 0.004035 | LPIPS: 0.218887 | Kin: 0.022549
+----------------------------------------------------------------------
+Epoch [5/2500] | LR: 0.000300
+  Train -> Total: 0.048865 | MSE: 0.003735 | LPIPS: 0.208147 | Kin: 0.024972
+  Val   -> Total: 0.047286 | MSE: 0.003465 | LPIPS: 0.207485 | Kin: 0.018552
+----------------------------------------------------------------------
+Epoch [6/2500] | LR: 0.000300
+  Train -> Total: 0.046301 | MSE: 0.003338 | LPIPS: 0.199304 | Kin: 0.022186
+  Val   -> Total: 0.045000 | MSE: 0.003038 | LPIPS: 0.200257 | Kin: 0.015631
+----------------------------------------------------------------------

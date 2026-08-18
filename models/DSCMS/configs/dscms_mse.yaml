@@ -1,0 +1,16 @@
+# Output settings
+ROOT_FOLDER: "models/DSCMS/test_composite_loss_mse_27_07_2026/"
+DEVICE: "cuda"
+NUM_WORKERS: 4
+
+# Training hyperparameters
+BATCH_SIZE: 32
+NUM_EPOCHS: 2500
+LEARNING_RATE: 0.0001
+
+# Loss settings
+LOSS_MODE: 1
+LOSS_WEIGHTS:
+  mse: 1.0
+  lpips: 0.0
+  kinetic: 0.0
