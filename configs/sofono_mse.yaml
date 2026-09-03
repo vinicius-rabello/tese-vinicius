@@ -1,6 +1,6 @@
 # Output settings
 MODEL_NAME: "sofono"
-ROOT_FOLDER: "models/SoFoNO/test_composite_loss_mse_05_08_2026/"
+ROOT_FOLDER: "models/SoFoNO/test_composite_loss_mse/"
 DEVICE: "cuda"
 NUM_WORKERS: 4
 

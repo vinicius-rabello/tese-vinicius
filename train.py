@@ -10,6 +10,7 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import os
 import time
+from datetime import datetime
 from datasets.super_res_dataset import SuperResDataset
 from losses.losses import FluidCompositeLoss
 
@@ -44,7 +45,7 @@ def train_one_epoch(
 ) -> dict:
     model.train()
     # Initialize dictionary to accumulate losses
-    epoch_losses = {'total': 0.0, 'mse': 0.0, 'lpips': 0.0, 'kinetic': 0.0}
+    epoch_losses = {'total': 0.0, 'mse': 0.0, 'lpips': 0.0, 'kinetic': 0.0, 'weighted_kinetic': 0.0}
     loop = tqdm(train_loader, leave=True, desc=f"Epoch {epoch}")
     
     for batch_idx, (lr, hr) in enumerate(loop):
@@ -67,8 +68,9 @@ def train_one_epoch(
         # Update progress bar with total loss
         loop.set_postfix(loss=loss.item())
         
-        # Save subplot grid every 200 batches
-        if batch_idx == 0:
+        # Save a sample subplot grid periodically (first batch of every Nth epoch)
+        image_save_interval = config.get('IMAGE_SAVE_INTERVAL', 10)
+        if batch_idx == 0 and epoch % image_save_interval == 0:
             os.makedirs(os.path.join(config['ROOT_FOLDER'], "output/images"), exist_ok=True)
             
             # Extract first image in the batch, first channel
@@ -81,10 +83,12 @@ def train_one_epoch(
             
             # Dynamically format loss string based on chosen LOSS_MODE
             loss_str = f"Total: {batch_metrics['total']:.4f} | MSE: {batch_metrics['mse']:.4f}"
-            if config['LOSS_MODE'] >= 2:
+            if config['LOSS_MODE'] in (2, 3):
                 loss_str += f" | LPIPS: {batch_metrics['lpips']:.4f}"
-            if config['LOSS_MODE'] >= 3:
+            if config['LOSS_MODE'] == 3:
                 loss_str += f" | Kin: {batch_metrics['kinetic']:.4f}"
+            if config['LOSS_MODE'] == 4:
+                loss_str += f" | WKin: {batch_metrics['weighted_kinetic']:.4f}"
                 
             fig.suptitle(f"Epoch {epoch} - Batch {batch_idx}\n{loss_str}", fontsize=14, fontweight='bold')
             
@@ -125,7 +129,7 @@ def validate(
     device: torch.device
 ) -> dict:
     model.eval()
-    val_losses = {'total': 0.0, 'mse': 0.0, 'lpips': 0.0, 'kinetic': 0.0}
+    val_losses = {'total': 0.0, 'mse': 0.0, 'lpips': 0.0, 'kinetic': 0.0, 'weighted_kinetic': 0.0}
     
     with torch.no_grad():
         for lr, hr in val_loader:
@@ -179,7 +183,13 @@ def main(config):
     # 1. EXTRACT MODEL NAME FROM CONFIG (Defaults to 'dscms' if missing)
     current_model = config.get('MODEL_NAME', 'dscms').lower()
     upper_model = current_model.upper()
-    
+
+    # Append a run timestamp to ROOT_FOLDER so the same config can be launched
+    # multiple times without each run overwriting the previous one's output.
+    run_timestamp = datetime.now().strftime('%d_%m_%Y_%H%M%S')
+    config['ROOT_FOLDER'] = os.path.join(config['ROOT_FOLDER'].rstrip('/'), run_timestamp) + '/'
+    print(f"Run output folder: {config['ROOT_FOLDER']}")
+
     # Create output directories
     os.makedirs(os.path.join(config['ROOT_FOLDER'], "output/logs"), exist_ok=True)
     os.makedirs(os.path.join(config['ROOT_FOLDER'], "output/weights"), exist_ok=True)
@@ -289,9 +299,11 @@ def main(config):
         log_str = (
             f"[Duration: {epoch_duration:.1f}s | Total Duration: {cumulative_time_hrs:.2f}h] Epoch [{epoch+1}/{config['NUM_EPOCHS']}] | LR: {current_lr:.6f}\n"
             f"  Train -> Total: {train_metrics['total']:.6f} | MSE: {train_metrics['mse']:.6f} | "
-            f"LPIPS: {train_metrics['lpips']:.6f} | Kin: {train_metrics['kinetic']:.6f}\n"
+            f"LPIPS: {train_metrics['lpips']:.6f} | Kin: {train_metrics['kinetic']:.6f} | "
+            f"WKin: {train_metrics['weighted_kinetic']:.6f}\n"
             f"  Val   -> Total: {val_metrics['total']:.6f} | MSE: {val_metrics['mse']:.6f} | "
-            f"LPIPS: {val_metrics['lpips']:.6f} | Kin: {val_metrics['kinetic']:.6f}\n"
+            f"LPIPS: {val_metrics['lpips']:.6f} | Kin: {val_metrics['kinetic']:.6f} | "
+            f"WKin: {val_metrics['weighted_kinetic']:.6f}\n"
             f"{'-'*70}\n"
         )
         
@@ -321,19 +333,47 @@ def main(config):
             break
 
 
-# 4. NEW ENTRY POINT - READS THE YAML CONFIG
+# 4. NEW ENTRY POINT - READS THE YAML CONFIG(S)
 if __name__ == "__main__":
     import argparse
     import yaml
-    
-    # Set up argument parsing to grab the YAML file from the terminal
+    import traceback
+
+    # Accepts one or more YAML configs. With more than one, they run as a
+    # queue: each trains to completion (or early stopping) before the next
+    # starts, so a whole night's worth of runs can be launched in one command.
     parser = argparse.ArgumentParser(description="Train Super Resolution Models")
-    parser.add_argument('--config', type=str, required=True, help="Path to the YAML config file")
+    parser.add_argument('--config', type=str, required=True, nargs='+',
+                         help="Path(s) to one or more YAML config files")
     args = parser.parse_args()
-    
-    # Read the YAML file into a Python dictionary
-    with open(args.config, 'r') as file:
-        experiment_config = yaml.safe_load(file)
-        
-    # Pass the dictionary directly into the main function
-    main(experiment_config)
+
+    print(f"Queued {len(args.config)} run(s):")
+    for config_path in args.config:
+        print(f"  - {config_path}")
+
+    queue_start = time.perf_counter()
+    failed_configs = []
+
+    for i, config_path in enumerate(args.config, start=1):
+        print(f"\n{'=' * 70}\nQueue [{i}/{len(args.config)}]: {config_path}\n{'=' * 70}")
+
+        with open(config_path, 'r') as file:
+            experiment_config = yaml.safe_load(file)
+
+        try:
+            main(experiment_config)
+        except Exception:
+            print(f"Run failed for {config_path} -- skipping to the next queued config.")
+            traceback.print_exc()
+            failed_configs.append(config_path)
+        finally:
+            # Free GPU memory before the next queued run starts.
+            torch.cuda.empty_cache()
+
+    queue_duration_hrs = (time.perf_counter() - queue_start) / 3600
+    succeeded = len(args.config) - len(failed_configs)
+    print(f"\nQueue finished in {queue_duration_hrs:.2f}h. {succeeded}/{len(args.config)} run(s) succeeded.")
+    if failed_configs:
+        print("Failed configs:")
+        for config_path in failed_configs:
+            print(f"  - {config_path}")

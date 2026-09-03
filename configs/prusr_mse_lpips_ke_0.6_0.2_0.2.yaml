@@ -1,6 +1,6 @@
 # Output settings
 MODEL_NAME: "prusr"
-ROOT_FOLDER: "models/PRUSR/test_composite_loss_mse_lpips_ke_0.6_0.2_0.2_05_08_2026/"
+ROOT_FOLDER: "models/PRUSR/test_composite_loss_mse_lpips_ke_0.6_0.2_0.2/"
 DEVICE: "cuda"
 NUM_WORKERS: 4
 

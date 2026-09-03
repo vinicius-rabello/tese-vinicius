@@ -27,3 +27,11 @@ models/**/output/images/
 
 # OS / editor cruft
 .DS_Store
+
+# Images
+*.png
+*.jpg
+*.jpeg
+
+# Logs
+/logs/

@@ -1,0 +1,17 @@
+# Output settings
+MODEL_NAME: "srcnn"
+ROOT_FOLDER: "models/SRCNN/test_composite_loss_mse_wke_0.6_0.4/"
+DEVICE: "cuda"
+NUM_WORKERS: 4
+
+# Training hyperparameters
+BATCH_SIZE: 32
+NUM_EPOCHS: 2500
+LEARNING_RATE: 0.0001
+
+# Loss settings
+# LOSS_MODE 4: MSE + Weighted Kinetic Energy Spectrum (no LPIPS)
+LOSS_MODE: 4
+LOSS_WEIGHTS:
+  mse: 0.6
+  weighted_kinetic: 0.4
