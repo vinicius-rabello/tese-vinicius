@@ -16,7 +16,7 @@ from datetime import datetime
 
 import numpy as np
 from torch.utils.data import Subset
-from datasets.super_res_dataset import SuperResDataset
+from datasets.super_res_dataset import SuperResDataset, NOISE_SEED_OFFSET
 from losses.losses import MseLpipsLoss
 from utils import reproducibility as repro
 
@@ -195,7 +195,8 @@ def load_checkpoint(model: nn.Module, optimizer: torch.optim.Optimizer, filepath
 # ---------------------------------------------------------------------------
 COMPLETED_STATUSES = ('completed_early_stop', 'completed_max_epochs')
 CSV_FIELDS = ['epoch', 'lr', 'epoch_sec', 'train_total', 'train_mse', 'train_lpips',
-              'val_total', 'val_mse', 'val_lpips', 'best_val_mse', 'es_metric', 'es_best', 'es_counter']
+              'val_total', 'val_mse', 'val_lpips', 'best_val_mse', 'es_metric', 'es_best', 'es_counter',
+              'noise_std']
 
 
 def residual_flag(config):
@@ -216,10 +217,20 @@ def lambda_value(config):
     return float(value)
 
 
+def noise_std_value(config):
+    # Observation noise on the LR input (m/s); 0 (default) is the noiseless regime.
+    value = config.get('NOISE_STD', 0.0)
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or value < 0:
+        raise ValueError(f"NOISE_STD must be a number >= 0 (got {value!r}).")
+    return float(value)
+
+
 def run_id_for(config, config_path):
     name = config.get('RUN_NAME') or os.path.splitext(os.path.basename(config_path))[0]
     skip = 'res' if residual_flag(config) else 'nores'
-    return f"{name}_{skip}_lam{lambda_value(config):g}_seed{config.get('SEED', 0)}"
+    noise = noise_std_value(config)
+    noise_tag = f"_noise{noise:g}" if noise > 0 else ""
+    return f"{name}_{skip}_lam{lambda_value(config):g}{noise_tag}_seed{config.get('SEED', 0)}"
 
 
 def dataset_constants(hr_data):
@@ -306,15 +317,18 @@ def main(config, config_path, deadline=None):
 
     print(f"Run: {run_id} -> {run_dir}")
 
+    noise_std = noise_std_value(config)
     train_dataset = SuperResDataset(
         hr_files=[f"./hycom_numpy/hycom_{year}.npy" for year in range(2001, 2020)],
         downsample_factor=1,
         freq_threshold=10,
+        noise_std=noise_std, noise_mode='random',
     )
     val_dataset = SuperResDataset(
         hr_files=["./hycom_numpy/hycom_2020.npy", "./hycom_numpy/hycom_2021.npy"],
         downsample_factor=1,
         freq_threshold=10,
+        noise_std=noise_std, noise_mode='fixed', noise_seed_offset=NOISE_SEED_OFFSET['val'],
     )
     constants = dataset_constants(train_dataset.hr_data)
     print(f"PSNR/SSIM R = {constants['psnr_ssim_R']:.6f} m/s | LPIPS scale = {constants['lpips_scale']:.6f} m/s")
@@ -379,7 +393,7 @@ def main(config, config_path, deadline=None):
     else:
         meta = {
             'run_id': run_id, 'config_file': config_path, 'config': run_config, 'seed': seed,
-            'model': current_model, 'residual': residual, 'lambda': lam,
+            'model': current_model, 'residual': residual, 'lambda': lam, 'noise_std': noise_std,
             'loss': 'mse + lambda * lpips (lpips: vgg, fields / lpips_scale, channel repeated x3, mean of u and v)',
             'n_params': n_params, 'git': git, 'libraries': repro.library_versions(),
             'deterministic': deterministic, 'deterministic_algorithms': deterministic_algorithms,
@@ -412,7 +426,8 @@ def main(config, config_path, deadline=None):
             'run_id': run_id, 'status': status, 'epochs_completed': epoch_done,
             'best_epoch': best_epoch, 'best_val_mse': best_monitor, 'monitor_metric': 'val_mse',
             'final_lr': optimizer.param_groups[0]['lr'], 'train_hours': train_time_sec / 3600,
-            'n_params': n_params, 'residual': residual, 'lambda': lam, 'finished': datetime.now().isoformat(),
+            'n_params': n_params, 'residual': residual, 'lambda': lam, 'noise_std': noise_std,
+            'finished': datetime.now().isoformat(),
         }
         write_json(summary, paths['summary.json'])
         print(f"[{run_id}] {status} after {epoch_done} epochs "
@@ -461,6 +476,7 @@ def main(config, config_path, deadline=None):
             'val_total': val_metrics['total'], 'val_mse': val_metrics['mse'], 'val_lpips': val_metrics['lpips'],
             'best_val_mse': best_monitor, 'es_metric': stopping['metric'],
             'es_best': early_stopper.best_loss, 'es_counter': early_stopper.counter,
+            'noise_std': noise_std,
         })
         print(f"[{run_id}] epoch {epoch_done}/{stopping['max_epochs']} ({epoch_sec:.1f}s, total {train_time_sec / 3600:.2f}h) "
               f"lr {lr_now:.2e} | train mse {train_metrics['mse']:.6g} lpips {train_metrics['lpips']:.4g} | "

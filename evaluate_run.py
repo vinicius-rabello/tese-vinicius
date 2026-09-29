@@ -25,7 +25,7 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader
 
-from datasets.super_res_dataset import SuperResDataset
+from datasets.super_res_dataset import SuperResDataset, NOISE_SEED_OFFSET
 from evaluation import baselines
 from evaluation import spectral_metrics as sm
 from losses.lpips_utils import build_lpips, lpips_distance
@@ -65,9 +65,23 @@ def load_model(run_dir, device):
     return model.to(device).eval(), meta
 
 
-def test_loader(batch_size):
-    ds = SuperResDataset(hr_files=TEST_FILES, downsample_factor=1, freq_threshold=10)
+def test_loader(batch_size, noise_std=0.0):
+    """Test set; with noise_std > 0 every sample gets its own fixed noise
+    (seeded by its index), identical for every model and baseline."""
+    ds = SuperResDataset(hr_files=TEST_FILES, downsample_factor=1, freq_threshold=10,
+                         noise_std=noise_std, noise_mode='fixed', noise_seed_offset=NOISE_SEED_OFFSET['test'])
     return DataLoader(ds, batch_size=batch_size, shuffle=False, num_workers=2)
+
+
+def val_loader(batch_size, noise_std=0.0):
+    ds = SuperResDataset(hr_files=VAL_FILES, downsample_factor=1, freq_threshold=10,
+                         noise_std=noise_std, noise_mode='fixed', noise_seed_offset=NOISE_SEED_OFFSET['val'])
+    return DataLoader(ds, batch_size=batch_size, shuffle=False)
+
+
+def run_noise_std(meta):
+    # Runs from before the noisy regime have no key: they were trained without noise.
+    return float(meta.get('noise_std', 0.0))
 
 
 def read_dates():
@@ -141,9 +155,12 @@ def main():
     parser.add_argument('--device', default='cuda' if torch.cuda.is_available() else 'cpu')
     parser.add_argument('--batch-size', type=int, default=16)
     parser.add_argument('--no-lpips', action='store_true')
+    parser.add_argument('--noise-std', type=float, default=0.0,
+                        help="observation noise (m/s) for the baselines; runs use their own config.json value")
     args = parser.parse_args()
 
-    loader = test_loader(args.batch_size)
+    loaders = {}
+    get_loader = lambda noise: loaders.setdefault(noise, test_loader(args.batch_size, noise))  # noqa: E731
     failures = []
 
     for run_dir in args.runs:
@@ -154,26 +171,26 @@ def main():
             failures.append(run_dir)
             continue
         constants = {k: meta[k] for k in CONSTANT_KEYS}
-        summary = evaluate(model, constants, run_dir, loader, args.device, not args.no_lpips)
+        summary = evaluate(model, constants, run_dir, get_loader(run_noise_std(meta)), args.device, not args.no_lpips)
         print(f"{run_dir}: mse {summary['mse']:.4g} psnr {summary['psnr']:.3f} ssim {summary['ssim']:.4f}")
 
     if args.baseline:
         constants = training_constants()
+        noise_tag = f"_noise{args.noise_std:g}" if args.noise_std > 0 else ""
         for name in args.baseline:
-            out_dir = os.path.join(args.results_dir, f'baseline_{name}')
-            meta = {'baseline': name, **constants}
+            out_dir = os.path.join(args.results_dir, f'baseline_{name}{noise_tag}')
+            meta = {'baseline': name, 'noise_std': args.noise_std, **constants}
             if name == 'identity':
                 predict = baselines.identity
             else:
-                val = DataLoader(SuperResDataset(VAL_FILES, 1, 10), batch_size=args.batch_size, shuffle=False)
-                gamma, curve = baselines.choose_gamma(val, device=args.device)
+                gamma, curve = baselines.choose_gamma(val_loader(args.batch_size, args.noise_std), device=args.device)
                 meta.update({'gamma': gamma, 'gamma_selection': 'min validation MSE',
                              'val_mse_by_gamma': curve})
                 predict = lambda lr, g=gamma: baselines.wiener(lr, g)  # noqa: E731
             os.makedirs(out_dir, exist_ok=True)
             with open(os.path.join(out_dir, 'config.json'), 'w') as f:
                 json.dump(meta, f, indent=2)
-            summary = evaluate(predict, constants, out_dir, loader, args.device, not args.no_lpips)
+            summary = evaluate(predict, constants, out_dir, get_loader(args.noise_std), args.device, not args.no_lpips)
             print(f"baseline {name}: mse {summary['mse']:.4g} psnr {summary['psnr']:.3f} ssim {summary['ssim']:.4f}"
                   + (f" (gamma {meta['gamma']:.3g})" if name == 'wiener' else ""))
 

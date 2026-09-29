@@ -95,7 +95,8 @@ def evaluate_missing(run_dir, device, with_lpips):
     import evaluate_run
     model, meta = evaluate_run.load_model(run_dir, device)
     constants = {k: meta[k] for k in evaluate_run.CONSTANT_KEYS}
-    evaluate_run.evaluate(model, constants, run_dir, evaluate_run.test_loader(16), device, with_lpips)
+    evaluate_run.evaluate(model, constants, run_dir, evaluate_run.test_loader(16, evaluate_run.run_noise_std(meta)),
+                          device, with_lpips)
     summary_path = os.path.join(run_dir, 'summary.json')
     summary = read_json(summary_path)
     summary['test_metrics'] = test_means(run_dir)

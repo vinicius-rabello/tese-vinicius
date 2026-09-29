@@ -4,8 +4,14 @@ from torch.utils.data import Dataset
 import os
 
 
+# Seed offsets for the fixed per-sample noise of each split, so validation
+# and test noise never coincide (only used when noise_std > 0).
+NOISE_SEED_OFFSET = {'val': 1_000_000, 'test': 2_000_000}
+
+
 class SuperResDataset(Dataset):
-    def __init__(self, hr_files, downsample_factor=4, freq_threshold=None):
+    def __init__(self, hr_files, downsample_factor=4, freq_threshold=None,
+                 noise_std=0.0, noise_mode='fixed', noise_seed_offset=0):
         """
         Parameters
         ----------
@@ -14,6 +20,21 @@ class SuperResDataset(Dataset):
             (N, 128, 128, 2).
         downsample_factor : int
             Downsampling factor used to generate LR inputs.
+        noise_std : float
+            Standard deviation (m/s) of white Gaussian observation noise added
+            to the LR input after the low-pass filter; the HR target stays
+            clean. 0 (the default) adds nothing and leaves the dataset exactly
+            as before.
+        noise_mode : 'fixed' or 'random'
+            'fixed' (validation/test): the noise of sample i is drawn from its
+            own generator seeded with noise_seed_offset + i, so every model and
+            baseline sees the same noise on the same sample. 'random'
+            (training): fresh noise on every access from torch's global RNG,
+            which the run seed, the DataLoader generator and worker_init_fn
+            control.
+        noise_seed_offset : int
+            Keeps the fixed noise of different splits independent (sample 0 of
+            validation and sample 0 of test get different noise).
         """
 
         print("Loading datasets...")
@@ -46,6 +67,11 @@ class SuperResDataset(Dataset):
 
         self.downsample_factor = downsample_factor
         self.freq_threshold = freq_threshold
+        if noise_mode not in ('fixed', 'random'):
+            raise ValueError(f"noise_mode must be 'fixed' or 'random', got {noise_mode!r}")
+        self.noise_std = float(noise_std)
+        self.noise_mode = noise_mode
+        self.noise_seed_offset = int(noise_seed_offset)
 
         N, H, W, C = self.hr_data.shape
         f = downsample_factor
@@ -99,6 +125,15 @@ class SuperResDataset(Dataset):
 
         if self.freq_threshold is not None:
             lr = self.apply_gaussian_low_pass_filter(lr, self.freq_threshold)
+
+        # With noise_std = 0 nothing below runs and no RNG is touched.
+        if self.noise_std > 0:
+            if self.noise_mode == 'fixed':
+                g = torch.Generator().manual_seed(self.noise_seed_offset + idx)
+                noise = torch.randn(lr.shape, generator=g, dtype=lr.dtype)
+            else:
+                noise = torch.randn(lr.shape, dtype=lr.dtype)
+            lr = lr + self.noise_std * noise
 
         return lr, hr
     

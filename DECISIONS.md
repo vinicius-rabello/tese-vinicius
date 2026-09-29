@@ -85,3 +85,12 @@ One line per decision not covered by the instructions, with the reason.
 - Idempotent: figures are saved without creation dates or software stamps, so two calls on the same results give byte-identical folders (tested); only the .zip differs in file timestamps.
 - The .zip is written next to the report folder as `report_<folder name>.zip`, and `*.pt` is excluded explicitly.
 - Alert "PSNR inconsistent": per test sample, |PSNR - 10 log10(R^2/MSE)| > 1e-3 dB. Alert "LPIPS dominates": lambda * train LPIPS / train MSE > 10 in the last logged epoch.
+
+## Noisy regime (regime B): NOISE_STD
+
+- `SuperResDataset(noise_std=0.0, noise_mode='fixed'|'random', noise_seed_offset=0)`: white Gaussian noise (m/s) added to the LR input after the low-pass filter; the HR target stays clean. With `noise_std = 0` (the default) no noise code runs and no RNG is touched, so the dataset is bit-identical to before (tested against the code of commit e98373b).
+- Fixed noise (validation, test, baselines): sample i draws its noise from its own CPU generator seeded with `offset + i`, so every model, the identity and the Wiener filter see exactly the same noise on the same sample. Offsets: 1,000,000 for validation, 2,000,000 for test (`NOISE_SEED_OFFSET`), so the two splits never share a realization.
+- Training noise: a fresh draw on every access from torch's global RNG, so it changes every epoch and is controlled by the run seed through `set_seed`, the DataLoader generator and `worker_init_fn` (and restored on resume with the loader generator state).
+- `NOISE_STD` (default 0) is validated as a number >= 0, stored in `config.json`, `summary.json` and as a new last column `noise_std` of `train_log.csv`; the run name gets `_noise<sigma>` before `_seed` only when it is > 0, so all existing names and YAMLs stay valid.
+- Evaluation reads `noise_std` from the run's `config.json` (a missing key means 0: those runs were trained without noise); baselines take `--noise-std` and go to `baseline_<name>_noise<sigma>` when it is > 0, leaving `baseline_identity`/`baseline_wiener` for the noiseless regime.
+- R, the SSIM offset and the LPIPS scale come from the clean training HR and do not depend on the noise.
