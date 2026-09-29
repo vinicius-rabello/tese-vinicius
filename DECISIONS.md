@@ -64,3 +64,10 @@ One line per decision not covered by the instructions, with the reason.
 - Test dates come from the netCDF `MT` variable (`scripts/make_test_dates.py` -> `evaluation/test_dates.csv`): 974 days, 2022-01-01 to 2024-08-31, in the .npy order. The patch (22.9-27.5 N, 90.1-85.0 W) is all ocean, and one HR pixel is 0.04 deg (about 4 km), so k = 1 is a wavelength of about 5.1 deg.
 - Wiener/Tikhonov: the same H(k) as the dataset; gamma is chosen on a log grid 1e-8..1 (33 values) by the lowest validation MSE; the chosen gamma and the whole curve go into `results/baseline_wiener/config.json`.
 - Evaluation reads architecture, residual flag and the three constants from the run's `config.json` and refuses the run (clear error, run listed as not evaluated) if the file or any key is missing, instead of building a model with guessed settings.
+
+## Experiment blocks
+
+- Block configs are generated, never written by hand: `scripts/blocks.py` holds the per-architecture batch size and learning rate (32 and 1e-4 for SRCNN/DSC-MS/PRUSR; 16 and 4e-5 for SRNO; 8 and 4e-5 for SoFoNO, as used so far) and the YAML format, and `make_block_a.py`, `make_block_b.py`, `make_block_c.py` go through it. Every config also sets `NUM_WORKERS: 4` and `IMAGE_SAVE_INTERVAL: 25`.
+- Config files are `configs/<block>/<block>_<arch>_<res|nores>_lam<lambda>_seed<seed>.yaml`, and `RUN_NAME = <block>_<arch>`, so the run id names the block, architecture, residual flag, lambda and seed.
+- `make_block_b.py` has no defaults: the sweep architecture and the 4 lambda values are chosen after the magnitude check, and lambda = 0 is refused (it is block A).
+- `make_block_c.py --lambda <value> --sweep-arch <arch>` skips seed 0 of the sweep architecture, which is the block B run `B_<arch>_res_lam<value>_seed0`; `collect_results.py` must take that run for C's seed 0.
