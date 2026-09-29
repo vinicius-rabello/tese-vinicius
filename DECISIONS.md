@@ -71,3 +71,17 @@ One line per decision not covered by the instructions, with the reason.
 - Config files are `configs/<block>/<block>_<arch>_<res|nores>_lam<lambda>_seed<seed>.yaml`, and `RUN_NAME = <block>_<arch>`, so the run id names the block, architecture, residual flag, lambda and seed.
 - `make_block_b.py` has no defaults: the sweep architecture and the 4 lambda values are chosen after the magnitude check, and lambda = 0 is refused (it is block A).
 - `make_block_c.py --lambda <value> --sweep-arch <arch>` skips seed 0 of the sweep architecture, which is the block B run `B_<arch>_res_lam<value>_seed0`; `collect_results.py` must take that run for C's seed 0.
+- Wiener gamma grid is 1e-16..1 (33 values, half-decade steps) and `choose_gamma` fails if the best value lands on the grid edge. The first grid (1e-8..1) was wrong: the degradation is noiseless, so validation MSE keeps falling down to gamma = 1e-12 (val MSE 2.8e-4), where only float32 round-off of the LR input limits the inverse; the filter then recovers k up to ~53 of 64.
+
+## collect_results.py
+
+- Outputs follow PROMPT_collect_results.md; the report folder also gets `runs/<run_id>/` with each run's `config.json`, `summary.json`, `train_log.csv` and `eval_summary.json` (all small), so the analysis doesn't need access to `results/`. No `metrics_per_sample.csv`, `spectra.npz` or `*.pt` go into the report.
+- `status` is an extra column (`completa`/`incompleta`): a run is complete only with status `completed_early_stop` or `completed_max_epochs`. `motivo_parada` maps those to `early_stopping`/`max_epochs`, `interrupted_max_hours` to `max_hours`, and is empty for a run still in progress.
+- Band columns: the spec asks for `e_banda_1..4` with band 4 = k > D0, but the 4.5 bands are five (k < 5, 5-10, 10-20, 20-40, >= 40), so the CSV has `e_banda_1..5` plus `e_banda_k_ge_D0`. PENDING the user's choice; any regrouping works from the stored per-sample bands without re-evaluating.
+- `lpips_apendice` = LPIPS with the AlexNet backbone; `lpips_vgg` (the training backbone) is an extra column.
+- `inclinacao_espectral` stays empty until the slope range is confirmed (`SLOPE_RANGE` in the script); it is then computed from the stored spectra.
+- A finished run without `metrics_per_sample.csv` is evaluated once (test set, `no_grad`, `evaluate_run.evaluate`) and its test means are written to `summary.json` under `test_metrics`; `--no-eval` skips this. Later calls never re-evaluate.
+- Figures are grouped by comparable runs: same loss, lambda, residual flag (and stage for multistage), all architectures together, one line/bar per architecture averaged over its seeds (n shown in the legend). The LR curve comes from `results/baseline_identity/spectra.npz`. Files are `spectra_<group>`, `rho_k_<group>`, `error_by_band_<group>`, plus `train_curves` (one panel per run) and `lambda_sweep` (only when an architecture has test metrics at more than one lambda; symlog x axis so lambda = 0 fits).
+- Idempotent: figures are saved without creation dates or software stamps, so two calls on the same results give byte-identical folders (tested); only the .zip differs in file timestamps.
+- The .zip is written next to the report folder as `report_<folder name>.zip`, and `*.pt` is excluded explicitly.
+- Alert "PSNR inconsistent": per test sample, |PSNR - 10 log10(R^2/MSE)| > 1e-3 dB. Alert "LPIPS dominates": lambda * train LPIPS / train MSE > 10 in the last logged epoch.

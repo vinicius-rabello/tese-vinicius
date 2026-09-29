@@ -19,7 +19,10 @@ def wiener(lr, gamma: float, d0: float = D0):
 def choose_gamma(loader, gammas=None, device='cpu'):
     """Picks gamma by the lowest validation MSE over a log-spaced grid.
     Returns (best_gamma, {gamma: val_mse})."""
-    gammas = np.logspace(-8, 0, 33) if gammas is None else gammas
+    # The degradation is noiseless, so the optimum sits where only float32
+    # round-off of the LR input limits the inverse (about 1e-12); the grid
+    # must reach far below that for the minimum to be interior.
+    gammas = np.logspace(-16, 0, 33) if gammas is None else gammas
     sums = {float(g): 0.0 for g in gammas}
     n = 0
     with torch.no_grad():
@@ -29,4 +32,8 @@ def choose_gamma(loader, gammas=None, device='cpu'):
                 sums[g] += mse(wiener(lr, g), hr).sum().item()
             n += lr.shape[0]
     val = {g: s / n for g, s in sums.items()}
-    return min(val, key=val.get), val
+    best = min(val, key=val.get)
+    ordered = sorted(val)
+    if best in (ordered[0], ordered[-1]):
+        raise RuntimeError(f"Best gamma {best:g} is at the edge of the grid; extend the grid.")
+    return best, val
