@@ -3,6 +3,7 @@
 import numpy as np
 import torch
 import torch.nn.functional as F
+from tqdm import tqdm
 
 from metrics.image_metrics import (
     mseLoss,
@@ -17,7 +18,7 @@ from metrics.physical_metrics import LossTKE
 from metrics.kinetic_energy_spectrum import KineticEnergySpectrumLoss, WeightedKineticEnergySpectrumLoss
 
 
-def evaluate_model(model, test_loader, device, img_size=128):
+def evaluate_model(model, test_loader, device, img_size=128, desc=None):
     """Runs a model over test_loader, returning per-channel mean/std for every
     per-channel metric, plus channel-combined mean/std for ke/wke (the
     kinetic-energy-spectrum losses inherently mix u and v, so they aren't
@@ -42,7 +43,7 @@ def evaluate_model(model, test_loader, device, img_size=128):
     ke_values, wke_values = [], []
 
     with torch.no_grad():
-        for idx, (lr, hr) in enumerate(test_loader):
+        for idx, (lr, hr) in enumerate(tqdm(test_loader, desc=desc, leave=True)):
             lr, hr = lr.to(device), hr.to(device)
             output = model(lr)
             for channel in range(2):  # u and v components
