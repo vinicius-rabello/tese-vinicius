@@ -137,3 +137,6 @@ One line per decision not covered by the instructions, with the reason.
 - Lambda grid for block B: {1e-3, 1e-2, 1e-1, 1}, swept on SRNO and on SRCNN.
 - Spectral-slope range: k = 11..46 (`SLOPE_RANGE` in `collect_results.py`); `inclinacao_espectral` is now filled.
 - SRNO runs with `DETERMINISTIC: true` (per-run key, recorded in `config.json`): the fast mode doesn't speed it up and costs memory. Implemented in `scripts/blocks.py` (per-architecture setting), which CHANGED the 3 existing SRNO YAMLs of block A (one added line each: `DETERMINISTIC: true`); the other 12 block A YAMLs are byte-identical.
+- Memory check before block B (one full epoch through train.py, nvidia-smi sampled every 0.5 s): SRNO deterministic with lambda > 0 peaks at 13212 MiB of 16384 (81%, 207 s/epoch); SoFoNO fast with lambda > 0 at 13266 MiB (81%, 281 s/epoch). Both under ~15 GB, so batch sizes stay as they are. SRNO's deterministic mode uses ~1.4 GB less than the fast mode even with the LPIPS loss.
+- Block B generated with `make_block_b.py --arch srno|srcnn --lambdas 1e-3 1e-2 1e-1 1` (8 configs in `configs/B/`).
+- `STATUS.md` tracks the state of the pipeline, the blocks and the measurements; `DECISIONS.md` keeps the reasons.
