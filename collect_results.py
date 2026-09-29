@@ -39,9 +39,9 @@ METRIC_COLS = ['mse', 'psnr', 'ssim', 'ke', 'wke', *BAND_COLS, 'e_banda_k_ge_D0'
 RUN_COLS = ['run_id', 'status', 'arquitetura', 'perda', 'lambda', 'semente', 'residual', 'ruido', 'estagio', 'epocas',
             'motivo_parada', 'tempo_treino_h', 'n_parametros', 'commit', 'arvore_limpa', 'R_psnr',
             'escala_lpips', *METRIC_COLS, 'best_val_mse']
-# Spectral-slope fitting range (k, cycles per domain): not fixed yet -- it
-# waits for the user's confirmation, so the column stays empty until then.
-SLOPE_RANGE = None
+# Spectral-slope fitting range (k, cycles per domain), confirmed by the user
+# (proposal: scripts/propose_slope_range.py, target slope -2.11 over it).
+SLOPE_RANGE = (11, 46)
 FIG_META = {'png': {'Software': None}, 'pdf': {'CreationDate': None, 'ModDate': None, 'Producer': None}}
 
 

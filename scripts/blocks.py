@@ -13,7 +13,9 @@ HPARAMS = {
     "srcnn": {"BATCH_SIZE": 32, "LEARNING_RATE": 1e-4},
     "dscms": {"BATCH_SIZE": 32, "LEARNING_RATE": 1e-4},
     "prusr": {"BATCH_SIZE": 32, "LEARNING_RATE": 1e-4},
-    "srno": {"BATCH_SIZE": 16, "LEARNING_RATE": 4e-5},
+    # SRNO runs bit-reproducible: cudnn autotuning doesn't speed it up
+    # (172.9 vs 172.3 s/epoch) and costs ~1.5 GB of its tight memory.
+    "srno": {"BATCH_SIZE": 16, "LEARNING_RATE": 4e-5, "DETERMINISTIC": True},
     "sofono": {"BATCH_SIZE": 8, "LEARNING_RATE": 4e-5},
 }
 CONFIG_ROOT = os.environ.get(

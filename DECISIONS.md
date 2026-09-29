@@ -130,3 +130,10 @@ One line per decision not covered by the instructions, with the reason.
 - `T_k` column = mean of T(k) over shells k >= D0; `eps_k` column = eps pooled over shells k >= D0 (sum of error power / sum of target power); the full curves are in `eval_summary.json` and in the `transfer_k_<group>` and `eps_k_<group>` figures, which also show the input (LR) and Wiener curves of the same noise level.
 - Figure groups get `_noise<sigma>` when the noise is > 0 (noiseless group names unchanged); `baselines.csv` lists every `results/baseline_*` folder, with a `ruido` column; `all_runs.csv` gets `ruido`.
 - Spectral slope, proposed range (awaiting confirmation): k in [12, 45], where the local slope of the test-set target spectrum stays near -2.1 (fit slope -2.12, rms log residual 0.023; it flattens beyond k ~ 45). Figure: `figures/slope_range_proposal.png`.
+
+## User decisions (after the noise sweep)
+
+- Regime B noise: sigma = 1e-2 m/s (Wiener k_c 22); 3e-2 is an optional sensitivity check later.
+- Lambda grid for block B: {1e-3, 1e-2, 1e-1, 1}, swept on SRNO and on SRCNN.
+- Spectral-slope range: k = 11..46 (`SLOPE_RANGE` in `collect_results.py`); `inclinacao_espectral` is now filled.
+- SRNO runs with `DETERMINISTIC: true` (per-run key, recorded in `config.json`): the fast mode doesn't speed it up and costs memory. Implemented in `scripts/blocks.py` (per-architecture setting), which CHANGED the 3 existing SRNO YAMLs of block A (one added line each: `DETERMINISTIC: true`); the other 12 block A YAMLs are byte-identical.
