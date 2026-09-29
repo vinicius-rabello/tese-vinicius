@@ -111,8 +111,13 @@ def band_errors(pred, target):
 
 
 def spectral_correlation(pred, target):
-    """rho(k) = |sum Yhat conj(Y)| / sqrt(sum|Yhat|^2 sum|Y|^2) over each shell
-    [k, k + 1), k = 1..N/2-1, summing u and v together (FRC-style). Shape (B, N/2-1)."""
+    """Phase coherence rho(k) = |sum Yhat conj(Y)| / sqrt(sum|Yhat|^2 sum|Y|^2)
+    over each shell [k, k + 1), k = 1..N/2-1, summing u and v together
+    (FRC-style). Shape (B, N/2-1).
+
+    It measures phase agreement only: a Gaussian blur multiplies each shell by
+    an almost constant real factor, which cancels out, so a blurred field
+    scores rho ~ 1. Use transfer_ratio / relative_spectral_error for amplitude."""
     n = pred.shape[-1]
     p, t = torch.fft.fft2(pred), torch.fft.fft2(target)
     cross = (p * t.conj()).sum(1)
@@ -128,13 +133,47 @@ def spectral_correlation(pred, target):
 
 
 def effective_resolution(rho, threshold: float = 0.5):
-    """k_c: the last k before rho first drops below the threshold (the
+    """k_c_fase (phase coherence): the last k before rho first drops below the threshold (the
     'first crossing' convention of FRC), so noise re-crossing at high k can't
     inflate it. rho[:, 0] is k = 1; returns 0 if already below at k = 1."""
     below = rho < threshold
     first_below = torch.where(below.any(1), below.float().argmax(1),
                               torch.full((rho.shape[0],), rho.shape[1], device=rho.device))
     return first_below.float()  # index of first k below = number of k's above, i.e. last k above
+
+
+def shell_powers(pred, target):
+    """Per-sample sums over each shell [k, k + 1), k = 1..N/2-1, of |Yhat|^2,
+    |Y|^2 and |Yhat - Y|^2 (u and v together). Summing these over samples
+    gives the test-set T(k) and eps(k). Each has shape (B, N/2-1)."""
+    n = pred.shape[-1]
+    p, t = torch.fft.fft2(pred), torch.fft.fft2(target)
+    pp, tt, ee = (p.abs() ** 2).sum(1), (t.abs() ** 2).sum(1), ((p - t).abs() ** 2).sum(1)
+    r = radius_grid(n, pred.device)
+    masks = [(r >= k) & (r < k + 1) for k in range(1, n // 2)]
+    return {name: torch.stack([x[:, m].sum(1) for m in masks], dim=1)
+            for name, x in (('pred', pp), ('target', tt), ('error', ee))}
+
+
+def transfer_ratio(pred_power, target_power):
+    """T(k) = E_yhat(k) / E_y(k): amplitude kept per shell (1 = all energy, H(k)^2
+    for the blurred input). Pass sums over the test set for the test-set T(k)."""
+    return pred_power / target_power
+
+
+def relative_spectral_error(error_power, target_power):
+    """eps(k) = E|Yhat - Y|^2 / E|Y|^2 per shell: amplitude and phase error
+    together (0 = perfect, (1 - H)^2 for the blurred input)."""
+    return error_power / target_power
+
+
+def effective_resolution_eps(eps, threshold: float = 0.5):
+    """k_c: the largest k such that eps(k') <= threshold for every k' <= k
+    (0 if eps(1) > threshold, N/2-1 if it never exceeds it). eps[..., 0] is k = 1."""
+    above = eps > threshold
+    first_above = torch.where(above.any(-1), above.float().argmax(-1),
+                              torch.full(eps.shape[:-1], eps.shape[-1], device=eps.device))
+    return first_above.float()
 
 
 def spectral_slope(spectrum, k_min: float, k_max: float):

@@ -96,6 +96,7 @@ def evaluate(predict, constants, out_dir, loader, device, with_lpips=True, dates
     dates = read_dates() if dates is None else dates
     lpips_models = {net: build_lpips(net, device) for net in ('vgg', 'alex')} if with_lpips else {}
     rows, pred_spectra, target_spectra, rhos = [], [], [], []
+    powers = {'pred': [], 'target': [], 'error': []}
     index = 0
     with torch.no_grad():
         for lr, hr in loader:
@@ -103,13 +104,17 @@ def evaluate(predict, constants, out_dir, loader, device, with_lpips=True, dates
             pred = predict(lr)
             bands = sm.band_errors(pred, hr)
             rho = sm.spectral_correlation(pred, hr)
+            pw = sm.shell_powers(pred, hr)
             batch = {
                 'mse': sm.mse(pred, hr),
                 'psnr': sm.psnr(pred, hr, constants['psnr_ssim_R']),
                 'ssim': sm.ssim(pred, hr, constants['psnr_ssim_R'], constants['hr_train_min']),
                 'ke': sm.ke(pred, hr),
                 'wke': sm.wke(pred, hr),
-                'k_c': sm.effective_resolution(rho),
+                # k_c: largest k with eps(k') <= 1/2 for all k' <= k (this sample);
+                # k_c_fase: the phase-coherence version, blind to blur.
+                'k_c': sm.effective_resolution_eps(sm.relative_spectral_error(pw['error'], pw['target'])),
+                'k_c_fase': sm.effective_resolution(rho),
             }
             for b, name in enumerate(sm.BAND_NAMES):
                 batch[f'band_{name}'] = bands[:, b]
@@ -123,6 +128,8 @@ def evaluate(predict, constants, out_dir, loader, device, with_lpips=True, dates
             pred_spectra.append(sm.radial_spectrum(pred).cpu())
             target_spectra.append(sm.radial_spectrum(hr).cpu())
             rhos.append(rho.cpu())
+            for name in powers:
+                powers[name].append(pw[name].cpu())
 
     if index != len(dates):
         raise RuntimeError(f"Evaluated {index} samples but {len(dates)} dates were given.")
@@ -133,12 +140,29 @@ def evaluate(predict, constants, out_dir, loader, device, with_lpips=True, dates
     np.savez_compressed(os.path.join(out_dir, 'spectra.npz'),
                         k=np.arange(1, torch.cat(pred_spectra).shape[1] + 1),
                         pred=torch.cat(pred_spectra).numpy(), target=torch.cat(target_spectra).numpy(),
-                        rho=torch.cat(rhos).numpy(), dates=np.array(dates))
+                        rho=torch.cat(rhos).numpy(), dates=np.array(dates),
+                        pred_power=torch.cat(powers['pred']).numpy(), target_power=torch.cat(powers['target']).numpy(),
+                        error_power=torch.cat(powers['error']).numpy())
     metric_keys = [k for k in rows[0] if k not in ('index', 'date')]
     summary = {k: float(np.mean([r[k] for r in rows])) for k in metric_keys}
+    pooled = pooled_spectral(*(torch.cat(powers[name]) for name in ('pred', 'target', 'error')))
     with open(os.path.join(out_dir, 'eval_summary.json'), 'w') as f:
-        json.dump({'n_samples': index, 'means': summary, 'constants': constants}, f, indent=2)
+        json.dump({'n_samples': index, 'means': summary, 'pooled': pooled, 'constants': constants}, f, indent=2)
     return summary
+
+
+def pooled_spectral(pred_power, target_power, error_power):
+    """Test-set T(k), eps(k) and k_c from shell sums pooled over all samples,
+    plus their summaries over k >= D0 (the restored region)."""
+    p, t, e = pred_power.sum(0), target_power.sum(0), error_power.sum(0)
+    T, eps = sm.transfer_ratio(p, t), sm.relative_spectral_error(e, t)
+    high = torch.arange(1, len(t) + 1) >= sm.D0
+    return {
+        'k_c': float(sm.effective_resolution_eps(eps)),
+        'T_k': T.tolist(), 'eps_k': eps.tolist(),
+        'T_k_ge_D0': float(T[high].mean()),
+        'eps_k_ge_D0': float(e[high].sum() / t[high].sum()),
+    }
 
 
 def training_constants():

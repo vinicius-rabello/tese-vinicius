@@ -31,9 +31,12 @@ STATUS_TO_REASON = {'completed_early_stop': 'early_stopping', 'completed_max_epo
                     'interrupted_max_hours': 'max_hours'}
 COMPLETE = ('completed_early_stop', 'completed_max_epochs')
 BAND_COLS = [f"e_banda_{i + 1}" for i in range(len(BAND_NAMES))]
-METRIC_COLS = ['mse', 'psnr', 'ssim', 'ke', 'wke', *BAND_COLS, 'e_banda_k_ge_D0', 'k_c',
+# k_c: largest k with eps(k') <= 1/2 for all k' <= k (test set pooled);
+# k_c_fase: the phase-coherence version (rho), which a blur can't lower;
+# T_k / eps_k: T(k) mean and eps(k) pooled over k >= D0.
+METRIC_COLS = ['mse', 'psnr', 'ssim', 'ke', 'wke', *BAND_COLS, 'e_banda_k_ge_D0', 'k_c', 'k_c_fase', 'T_k', 'eps_k',
                'inclinacao_espectral', 'lpips_apendice', 'lpips_vgg']
-RUN_COLS = ['run_id', 'status', 'arquitetura', 'perda', 'lambda', 'semente', 'residual', 'estagio', 'epocas',
+RUN_COLS = ['run_id', 'status', 'arquitetura', 'perda', 'lambda', 'semente', 'residual', 'ruido', 'estagio', 'epocas',
             'motivo_parada', 'tempo_treino_h', 'n_parametros', 'commit', 'arvore_limpa', 'R_psnr',
             'escala_lpips', *METRIC_COLS, 'best_val_mse']
 # Spectral-slope fitting range (k, cycles per domain): not fixed yet -- it
@@ -71,7 +74,15 @@ def test_means(run_dir):
     if not rows:
         return {}
     col = lambda name: np.array([to_float(r[name]) for r in rows]) if name in rows[0] else None  # noqa: E731
-    out = {m: float(np.mean(col(m))) for m in ('mse', 'psnr', 'ssim', 'ke', 'wke', 'k_c') if col(m) is not None}
+    out = {m: float(np.mean(col(m))) for m in ('mse', 'psnr', 'ssim', 'ke', 'wke') if col(m) is not None}
+    if col('k_c_fase') is not None:
+        out['k_c_fase'] = float(np.mean(col('k_c_fase')))
+    elif col('k_c') is not None:
+        # Evaluated before k_c was redefined: that column is the phase version.
+        out['k_c_fase'] = float(np.mean(col('k_c')))
+    pooled = pooled_from_npz(run_dir)
+    if pooled:
+        out.update({'k_c': pooled['k_c'], 'T_k': pooled['T_k_ge_D0'], 'eps_k': pooled['eps_k_ge_D0']})
     for i, name in enumerate(BAND_NAMES):
         if col(f'band_{name}') is not None:
             out[BAND_COLS[i]] = float(np.mean(col(f'band_{name}')))
@@ -87,6 +98,28 @@ def test_means(run_dir):
         spec = torch.from_numpy(np.load(os.path.join(run_dir, 'spectra.npz'))['pred'])
         out['inclinacao_espectral'] = float(spectral_slope(spec, *SLOPE_RANGE).mean())
     return out
+
+
+def pooled_from_npz(run_dir):
+    """Test-set T(k), eps(k), k_c from the shell sums in spectra.npz (None for
+    evaluations made before those sums were stored)."""
+    path = os.path.join(run_dir, 'spectra.npz')
+    if not os.path.exists(path):
+        return None
+    d = np.load(path)
+    if 'error_power' not in d:
+        return None
+    import torch
+    from evaluate_run import pooled_spectral
+    return pooled_spectral(*(torch.from_numpy(d[f'{n}_power']) for n in ('pred', 'target', 'error')))
+
+
+def num_mean(values):
+    """Mean of numeric values; NaN if any is missing (e.g. k_c for runs
+    evaluated before it was redefined), so figures and tables skip it."""
+    if not values or any(v == '' or v is None for v in values):
+        return float('nan')
+    return float(np.mean(values))
 
 
 def evaluate_missing(run_dir, device, with_lpips):
@@ -118,6 +151,7 @@ def run_row(run_id, run_dir):
         'lambda': '' if lam is None else lam,
         'semente': config.get('seed', ''),
         'residual': config.get('residual', ''),
+        'ruido': config.get('noise_std', 0.0) if config else '',
         'estagio': (config.get('config') or {}).get('STAGE', ''),
         'epocas': summary.get('epochs_completed', ''),
         'motivo_parada': STATUS_TO_REASON.get(status, ''),
@@ -145,8 +179,9 @@ def save(fig, out_dir, name):
 def group_key(row):
     """Comparable runs: same loss, lambda, residual flag and stage (all
     architectures and seeds together)."""
+    noise = row.get('ruido') or 0
     return f"{row['perda'] or 'na'}_lam{row['lambda']}_{'res' if row['residual'] else 'nores'}" + \
-        (f"_stage{row['estagio']}" if row['estagio'] != '' else '')
+        (f"_noise{noise:g}" if noise else '') + (f"_stage{row['estagio']}" if row['estagio'] != '' else '')
 
 
 def mean_spectra(run_dir):
@@ -154,7 +189,12 @@ def mean_spectra(run_dir):
     if not os.path.exists(path):
         return None
     d = np.load(path)
-    return {'k': d['k'], 'pred': d['pred'].mean(0), 'target': d['target'].mean(0), 'rho': d['rho'].mean(0)}
+    out = {'k': d['k'], 'pred': d['pred'].mean(0), 'target': d['target'].mean(0), 'rho': d['rho'].mean(0)}
+    if 'error_power' in d:
+        t = d['target_power'].sum(0)
+        out['T'] = d['pred_power'].sum(0) / t
+        out['eps'] = d['error_power'].sum(0) / t
+    return out
 
 
 def by_arch(rows, results_dir):
@@ -168,11 +208,15 @@ def by_arch(rows, results_dir):
 
 
 def figure_spectra_rho_bands(groups, results_dir, baselines_dir, out_dir):
-    identity = mean_spectra(os.path.join(baselines_dir, 'baseline_identity'))
     for key, rows in sorted(groups.items()):
         archs = by_arch(rows, results_dir)
         if not archs:
             continue
+        noise = rows[0].get('ruido') or 0
+        tag = f"_noise{noise:g}" if noise else ""
+        identity = mean_spectra(os.path.join(baselines_dir, f'baseline_identity{tag}'))
+        wiener = mean_spectra(os.path.join(baselines_dir, f'baseline_wiener{tag}'))
+        figure_amplitude(key, archs, identity, wiener, out_dir)
         k = next(iter(archs.values()))[0][1]['k']
         target = next(iter(archs.values()))[0][1]['target']
 
@@ -198,9 +242,9 @@ def figure_spectra_rho_bands(groups, results_dir, baselines_dir, out_dir):
         ax.axhline(0.5, color='red', ls=':', lw=1, label='ρ = 1/2')
         ax.axvline(D0, color='gray', ls=':', lw=1)
         ax.set_xlabel('Wavenumber k (cycles per 128-px domain)')
-        ax.set_ylabel('Spectral correlation ρ(k) (dimensionless)')
+        ax.set_ylabel('Phase coherence ρ(k) (dimensionless)')
         ax.set_ylim(0, 1.02)
-        ax.set_title(f'Spectral correlation, test set mean -- {key}')
+        ax.set_title(f'Phase coherence ρ(k) (blind to blur), test set mean -- {key}')
         ax.grid(True, ls='--', alpha=0.3)
         ax.legend(fontsize=8)
         save(fig, out_dir, f'rho_k_{key}')
@@ -214,7 +258,7 @@ def figure_spectra_rho_bands(groups, results_dir, baselines_dir, out_dir):
                 arch_rows.setdefault(row['arquitetura'], []).append(row)
         width = 0.8 / max(1, len(arch_rows))
         for i, (arch, rs) in enumerate(sorted(arch_rows.items())):
-            vals = [np.mean([r[c] for r in rs]) for c in BAND_COLS]
+            vals = [num_mean([r[c] for r in rs]) for c in BAND_COLS]
             ax.bar(np.arange(len(BAND_COLS)) + i * width, vals, width, label=f"{arch} (n={len(rs)})")
         ax.set_xticks(np.arange(len(BAND_COLS)) + width * (len(arch_rows) - 1) / 2)
         ax.set_xticklabels(labels)
@@ -225,6 +269,34 @@ def figure_spectra_rho_bands(groups, results_dir, baselines_dir, out_dir):
         ax.grid(True, axis='y', ls='--', alpha=0.3)
         ax.legend(fontsize=8)
         save(fig, out_dir, f'error_by_band_{key}')
+
+
+def figure_amplitude(key, archs, identity, wiener, out_dir):
+    """transfer_k (T(k) = E_yhat/E_y) and eps_k (relative spectral error), test
+    set pooled, with the input (LR) and Wiener curves for reference."""
+    curves = {arch: [s for _, s in items if 'T' in s] for arch, items in archs.items()}
+    curves = {a: c for a, c in curves.items() if c}
+    if not curves:
+        return
+    k = next(iter(curves.values()))[0]['k']
+    for name, field, ylabel, ref_line in (
+            ('transfer_k', 'T', 'Transfer ratio T(k) = E_ŷ(k) / E_y(k)', 1.0),
+            ('eps_k', 'eps', 'Relative spectral error ε(k) = E|Ŷ−Y|² / E|Y|²', 0.5)):
+        fig, ax = plt.subplots(figsize=(7, 5))
+        for label, ref, style in (('Input (LR)', identity, '--'), ('Wiener', wiener, ':')):
+            if ref is not None and field in ref:
+                ax.semilogy(k, ref[field], color='gray', ls=style, lw=1.5, label=label)
+        for arch, specs in sorted(curves.items()):
+            ax.semilogy(k, np.mean([s[field] for s in specs], 0), lw=1.3, label=f"{arch} (n={len(specs)})")
+        ax.axhline(ref_line, color='red', ls=':', lw=1,
+                   label='T = 1 (all energy kept)' if field == 'T' else 'ε = 1/2 (k_c threshold)')
+        ax.axvline(D0, color='gray', ls=':', lw=1)
+        ax.set_xlabel('Wavenumber k (cycles per 128-px domain)')
+        ax.set_ylabel(f'{ylabel} (dimensionless)')
+        ax.set_title(f'{ylabel.split(" = ")[0]}, test set -- {key}')
+        ax.grid(True, which='both', ls='--', alpha=0.3)
+        ax.legend(fontsize=8)
+        save(fig, out_dir, f'{name}_{key}')
 
 
 def figure_train_curves(rows, results_dir, out_dir):
@@ -264,7 +336,7 @@ def figure_lambda_sweep(rows, out_dir):
     fig, axes = plt.subplots(1, 3, figsize=(15, 4.5))
     for arch, rs in sorted(per_arch.items()):
         lams = sorted({r['lambda'] for r in rs})
-        mean = lambda col, lam: np.mean([r[col] for r in rs if r['lambda'] == lam])  # noqa: E731
+        mean = lambda col, lam: num_mean([r[col] for r in rs if r['lambda'] == lam])  # noqa: E731
         for ax, col, label in zip(axes, ('mse', 'ke', 'k_c'),
                                   ('Test MSE (m²/s²)', 'Test KE (log-spectral, dimensionless)',
                                    'Effective resolution k_c (cycles per domain)')):
@@ -329,16 +401,15 @@ def write_report(rows, baseline_rows, alert_lines, figures, out_dir):
     done = sorted([r for r in rows if r['mse'] != ''], key=lambda r: r['mse'])
     pending = [r for r in rows if r['mse'] == '']
     lines += ["## Runs (test set, m/s, fixed R), sorted by MSE", ""]
-    head = ['run_id', 'epocas', 'motivo_parada', 'mse', 'psnr', 'ssim', 'ke', 'wke', 'e_banda_k_ge_D0', 'k_c',
+    head = ['run_id', 'epocas', 'motivo_parada', 'mse', 'psnr', 'ssim', 'ke', 'wke', 'e_banda_k_ge_D0', 'k_c', 'k_c_fase',
+            'eps_k',
             'best_val_mse']
     lines += ["| " + " | ".join(head) + " |", "|" + "---|" * len(head)]
     lines += ["| " + " | ".join(fmt(r[c]) for c in head) + " |" for r in done]
     if baseline_rows:
-        lines += ["", "Baselines:", "", "| baseline | mse | psnr | ssim | ke | wke | e_banda_k_ge_D0 | k_c |",
-                  "|---|---|---|---|---|---|---|---|"]
-        lines += [f"| {b['baseline']} | " + " | ".join(fmt(b[c]) for c in
-                                                         ('mse', 'psnr', 'ssim', 'ke', 'wke', 'e_banda_k_ge_D0', 'k_c'))
-                  + " |" for b in baseline_rows]
+        cols = ('ruido', 'mse', 'psnr', 'ssim', 'ke', 'wke', 'e_banda_k_ge_D0', 'k_c', 'k_c_fase', 'eps_k')
+        lines += ["", "Baselines:", "", "| baseline | " + " | ".join(cols) + " |", "|---" * (len(cols) + 1) + "|"]
+        lines += [f"| {b['baseline']} | " + " | ".join(fmt(b[c]) for c in cols) + " |" for b in baseline_rows]
     if pending:
         lines += ["", "Not evaluated yet / incomplete: " + ", ".join(f"{r['run_id']} ({r['status']})" for r in pending)]
 
@@ -352,7 +423,7 @@ def write_report(rows, baseline_rows, alert_lines, figures, out_dir):
                 continue
             for lam in sorted({r['lambda'] for r in same if r['lambda'] != 0}):
                 other = [r for r in same if r['lambda'] == lam]
-                d = {c: np.mean([r[c] for r in other]) - np.mean([r[c] for r in base])
+                d = {c: num_mean([r[c] for r in other]) - num_mean([r[c] for r in base])
                      for c in ('mse', 'psnr', 'ssim', 'ke', 'wke', 'k_c')}
                 diffs.append(f"| {arch} | {residual} | {lam:g} | " + " | ".join(f"{d[c]:+.4g}" for c in d) + " |")
     if diffs:
@@ -413,15 +484,16 @@ def main():
                 shutil.copyfile(os.path.join(run_dir, name), os.path.join(target, name))
 
     baseline_rows = []
-    for name in ('identity', 'wiener'):
-        means = test_means(os.path.join(args.results_dir, f'baseline_{name}'))
+    for folder in sorted(d for d in os.listdir(args.results_dir) if d.startswith('baseline_')):
+        means = test_means(os.path.join(args.results_dir, folder))
         if means:
-            config = read_json(os.path.join(args.results_dir, f'baseline_{name}', 'config.json')) or {}
-            row = {'baseline': name, 'gamma': config.get('gamma', ''), **{c: '' for c in METRIC_COLS}, **means}
+            config = read_json(os.path.join(args.results_dir, folder, 'config.json')) or {}
+            row = {'baseline': folder[len('baseline_'):], 'ruido': config.get('noise_std', 0.0),
+                   'gamma': config.get('gamma', ''), **{c: '' for c in METRIC_COLS}, **means}
             baseline_rows.append(row)
 
     write_csv(os.path.join(out_dir, 'all_runs.csv'), rows, RUN_COLS)
-    write_csv(os.path.join(out_dir, 'baselines.csv'), baseline_rows, ['baseline', 'gamma', *METRIC_COLS])
+    write_csv(os.path.join(out_dir, 'baselines.csv'), baseline_rows, ['baseline', 'ruido', 'gamma', *METRIC_COLS])
 
     groups = {}
     for r in rows:

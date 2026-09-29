@@ -70,6 +70,39 @@ def main():
     results.append(check("(d) rho(k)(y, y) = 1 for every k, k_c = 63", (rho - 1).abs().max().item() < 1e-12
                          and bool((kc == 63).all())))
 
+    # T(k) and eps(k): T = 1 and eps = 0 for a perfect prediction
+    pw = sm.shell_powers(hr.double(), hr.double())
+    T = sm.transfer_ratio(pw['pred'].sum(0), pw['target'].sum(0))
+    eps = sm.relative_spectral_error(pw['error'].sum(0), pw['target'].sum(0))
+    results.append(check("T(k) = 1 and eps(k) = 0 for yhat = y, k_c = 63",
+                         (T - 1).abs().max().item() < 1e-12 and eps.abs().max().item() == 0
+                         and sm.effective_resolution_eps(eps).item() == 63))
+
+    # identity on a synthetic field: T(k0) = H(k0)^2 and eps(k0) = (1 - H(k0))^2
+    ok, worst = True, 0.0
+    for k0 in (3, 7, 15, 25):
+        field = cosine_field(k0, 0.5)
+        kk = torch.fft.fftfreq(N, dtype=torch.float64) * N  # H in double: the check is exact
+        h_grid = torch.exp(-(kk[:, None] ** 2 + kk[None, :] ** 2) / 200)
+        blurred = torch.fft.ifft2(torch.fft.fft2(field) * h_grid).real
+        pw = sm.shell_powers(blurred, field)
+        h = math.exp(-k0 ** 2 / 200)
+        t_k = sm.transfer_ratio(pw['pred'], pw['target'])[0, k0 - 1].item()
+        e_k = sm.relative_spectral_error(pw['error'], pw['target'])[0, k0 - 1].item()
+        worst = max(worst, abs(t_k - h ** 2), abs(e_k - (1 - h) ** 2))
+        ok = ok and math.isclose(t_k, h ** 2, rel_tol=1e-9, abs_tol=1e-15) and math.isclose(e_k, (1 - h) ** 2, rel_tol=1e-9)
+    results.append(check("identity on a cosine at k0 = 3, 7, 15, 25: T(k0) = H(k0)^2, eps(k0) = (1 - H(k0))^2", ok,
+                         f"(max abs deviation {worst:.1e})"))
+
+    # the new k_c sees the blur: identity on real samples, test set pooled
+    pw = sm.shell_powers(lr.double(), hr.double())
+    kc_id = sm.effective_resolution_eps(sm.relative_spectral_error(pw['error'].sum(0), pw['target'].sum(0))).item()
+    kc_phase = sm.effective_resolution(sm.spectral_correlation(lr.double(), hr.double())).mean().item()
+    analytic = math.sqrt(-200 * math.log(1 - math.sqrt(0.5)))
+    results.append(check("identity (blurred LR): k_c near where (1-H)^2 = 1/2, while k_c_fase stays high",
+                         abs(kc_id - analytic) <= 1.5 and kc_phase > 40,
+                         f"(k_c = {kc_id:.0f}, analytic {analytic:.1f}; k_c_fase = {kc_phase:.1f})"))
+
     # (f) the same seed gives the same initial loss
     losses = []
     for _ in range(2):
