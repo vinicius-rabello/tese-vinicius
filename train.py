@@ -21,22 +21,37 @@ from losses.losses import FluidCompositeLoss
 from utils import reproducibility as repro
 
 class EarlyStopping:
-    def __init__(self, patience=15, min_delta=1e-4):
+    """Counts epochs without a significant improvement of the monitored metric.
+
+    relative=False (default, used by train_multistage.py): an epoch improves if
+    val < best - min_delta. relative=True: it improves if
+    val < best * (1 - min_delta), i.e. the relative drop exceeds min_delta.
+    Stopping is never triggered before epoch min_epochs; the counter still
+    runs, so a plateau that started earlier stops right at min_epochs."""
+
+    def __init__(self, patience=15, min_delta=1e-4, relative=False, min_epochs=0):
         self.patience = patience
         self.min_delta = min_delta
+        self.relative = relative
+        self.min_epochs = min_epochs
         self.counter = 0
         self.best_loss = float('inf')
         self.early_stop = False
 
-    def __call__(self, val_loss):
-        if val_loss < (self.best_loss - self.min_delta):
+    def improves(self, val_loss):
+        if self.relative:
+            return val_loss < self.best_loss * (1 - self.min_delta)
+        return val_loss < (self.best_loss - self.min_delta)
+
+    def __call__(self, val_loss, epoch=None):
+        if self.improves(val_loss):
             self.best_loss = val_loss
             self.counter = 0
         else:
             self.counter += 1
             print(f"EarlyStopping counter: {self.counter} out of {self.patience}")
-            if self.counter >= self.patience:
-                self.early_stop = True
+        if self.counter >= self.patience and (epoch is None or epoch >= self.min_epochs):
+            self.early_stop = True
 
     def state_dict(self):
         return {'counter': self.counter, 'best_loss': self.best_loss, 'early_stop': self.early_stop}
@@ -193,7 +208,7 @@ def load_checkpoint(model: nn.Module, optimizer: torch.optim.Optimizer, filepath
 # ---------------------------------------------------------------------------
 COMPLETED_STATUSES = ('completed_early_stop', 'completed_max_epochs')
 CSV_FIELDS = ['epoch', 'lr', 'epoch_sec', 'train_total', 'train_mse', 'train_lpips',
-              'val_total', 'val_mse', 'val_lpips', 'monitor', 'best_monitor', 'es_counter']
+              'val_total', 'val_mse', 'val_lpips', 'best_val_mse', 'es_metric', 'es_best', 'es_counter']
 
 
 def run_id_for(config, config_path):
@@ -328,9 +343,26 @@ def main(config, config_path, deadline=None):
         mode=config['LOSS_MODE'], weights=config['LOSS_WEIGHTS'], device=config['DEVICE'], img_size=128)
     optimizer = optim.Adam(model.parameters(), lr=config['LEARNING_RATE'], weight_decay=1e-4)
     scheduler = ReduceLROnPlateau(optimizer, mode='min', patience=5, factor=0.5)
-    early_stopper = EarlyStopping(patience=15, min_delta=1e-4)
+
+    # Same stopping rule for every loss: relative improvement of the
+    # validation MSE. The config keys exist only so quick tests can shrink
+    # them; the campaign uses the defaults.
+    stopping = {
+        'metric': 'val_mse',
+        'relative_min_delta': float(config.get('ES_REL_DELTA', 1e-3)),
+        'patience': int(config.get('ES_PATIENCE', 15)),
+        'min_epochs': int(config.get('MIN_EPOCHS', 50)),
+        'max_epochs': int(config.get('MAX_EPOCHS', 300)),
+    }
+    if 'NUM_EPOCHS' in config:
+        print(f"Note: NUM_EPOCHS is ignored; training runs {stopping['min_epochs']}-{stopping['max_epochs']} epochs.")
+    early_stopper = EarlyStopping(patience=stopping['patience'], min_delta=stopping['relative_min_delta'],
+                                  relative=True, min_epochs=stopping['min_epochs'])
 
     git = repro.git_info()
+    if git['dirty'] and not config.get('SUBSET_TRAIN') and not config.get('ALLOW_DIRTY'):
+        raise RuntimeError("Tracked files have uncommitted changes; commit them before a real run "
+                           "(or set ALLOW_DIRTY: true) so config.json records the exact code.")
     run_config = {k: v for k, v in config.items() if k != 'RUN_DIR'}
     if os.path.exists(paths['config.json']):
         meta = read_json(paths['config.json'])
@@ -340,7 +372,10 @@ def main(config, config_path, deadline=None):
             'run_id': run_id, 'config_file': config_path, 'config': run_config, 'seed': seed,
             'n_params': n_params, 'git': git, 'libraries': repro.library_versions(),
             'deterministic': deterministic, 'deterministic_algorithms': deterministic_algorithms,
-            'created': datetime.now().isoformat(), **constants,
+            'created': datetime.now().isoformat(), 'stopping': stopping,
+            'scheduler': {'type': 'ReduceLROnPlateau', 'metric': 'val_mse', 'patience': 5,
+                          'factor': 0.5, 'threshold': 1e-4, 'threshold_mode': 'rel'},
+            **constants,
         }
     write_json(meta, paths['config.json'])
 
@@ -364,7 +399,7 @@ def main(config, config_path, deadline=None):
     def finish(status):
         summary = {
             'run_id': run_id, 'status': status, 'epochs_completed': epoch_done,
-            'best_epoch': best_epoch, 'best_monitor': best_monitor, 'monitor_metric': 'val_total',
+            'best_epoch': best_epoch, 'best_val_mse': best_monitor, 'monitor_metric': 'val_mse',
             'final_lr': optimizer.param_groups[0]['lr'], 'train_hours': train_time_sec / 3600,
             'n_params': n_params, 'finished': datetime.now().isoformat(),
         }
@@ -377,13 +412,13 @@ def main(config, config_path, deadline=None):
     if early_stopper.early_stop:
         return finish('completed_early_stop')
 
-    for epoch in range(start_epoch, config['NUM_EPOCHS']):
+    for epoch in range(start_epoch, stopping['max_epochs']):
         epoch_start = time.perf_counter()
         train_metrics = train_one_epoch(
             model, train_loader, optimizer, criterion, config['DEVICE'], epoch + 1, config, upper_model)
         val_metrics = validate(model, val_loader, criterion, config['DEVICE'])
 
-        monitor = val_metrics['total']
+        monitor = val_metrics['mse']
         scheduler.step(monitor)
         epoch_sec = time.perf_counter() - epoch_start
         train_time_sec += epoch_sec
@@ -393,7 +428,7 @@ def main(config, config_path, deadline=None):
             best_monitor, best_epoch = monitor, epoch_done
             atomic_torch_save({'model_state_dict': unwrap(model).state_dict(), 'epoch': epoch_done,
                                'val_metrics': val_metrics}, paths['best.pt'])
-        early_stopper(monitor)
+        early_stopper(monitor, epoch_done)
 
         atomic_torch_save({
             'epoch': epoch_done,
@@ -413,12 +448,13 @@ def main(config, config_path, deadline=None):
             'train_total': train_metrics['total'], 'train_mse': train_metrics['mse'],
             'train_lpips': train_metrics['lpips'],
             'val_total': val_metrics['total'], 'val_mse': val_metrics['mse'], 'val_lpips': val_metrics['lpips'],
-            'monitor': monitor, 'best_monitor': best_monitor, 'es_counter': early_stopper.counter,
+            'best_val_mse': best_monitor, 'es_metric': stopping['metric'],
+            'es_best': early_stopper.best_loss, 'es_counter': early_stopper.counter,
         })
-        print(f"[{run_id}] epoch {epoch_done}/{config['NUM_EPOCHS']} ({epoch_sec:.1f}s, total {train_time_sec / 3600:.2f}h) "
+        print(f"[{run_id}] epoch {epoch_done}/{stopping['max_epochs']} ({epoch_sec:.1f}s, total {train_time_sec / 3600:.2f}h) "
               f"lr {lr_now:.2e} | train mse {train_metrics['mse']:.6g} lpips {train_metrics['lpips']:.4g} | "
               f"val mse {val_metrics['mse']:.6g} lpips {val_metrics['lpips']:.4g} | "
-              f"best {best_monitor:.6g} @ {best_epoch} | es {early_stopper.counter}/{early_stopper.patience}")
+              f"best val_mse {best_monitor:.6g} @ {best_epoch} | es[val_mse] {early_stopper.counter}/{early_stopper.patience}")
 
         if early_stopper.early_stop:
             return finish('completed_early_stop')
