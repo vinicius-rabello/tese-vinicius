@@ -228,6 +228,7 @@ def dataset_constants(hr_data):
     the LPIPS input scale that maps the fields into [-1, 1]."""
     return {
         'psnr_ssim_R': float(hr_data.max() - hr_data.min()),
+        'hr_train_min': float(hr_data.min()),  # fixed SSIM offset (evaluation/spectral_metrics.ssim)
         'lpips_scale': float(np.abs(hr_data).max()),
     }
 

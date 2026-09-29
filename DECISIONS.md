@@ -50,3 +50,17 @@ One line per decision not covered by the instructions, with the reason.
 - Epoch means (train and validation) are now weighted by the number of samples; before, they were a plain mean over batches, which gave the smaller last batch extra weight.
 - `LAMBDA` has no default: a config without an explicit number >= 0 is rejected. It is part of the run name (`_lam<value>`, e.g. `_lam0`, `_lam0.01`) and is stored in `config.json` and `summary.json`.
 - The one-epoch magnitude check (`scripts/lpips_magnitude_check.py`) uses the batch sizes and learning rates used so far: 32 and 1e-4 for SRCNN/DSC-MS/PRUSR, 16 and 4e-5 for SRNO, 8 and 4e-5 for SoFoNO.
+
+## 4.5 Evaluation metrics
+
+- The new evaluation (`evaluate_run.py`, `evaluation/spectral_metrics.py`) does not use `metrics/image_metrics.py` (per-sample-rescaled PSNR/SSIM, FSIM, EPI); that file stays only for the old notebooks.
+- MSE and PSNR are per test sample over u and v together; PSNR = 10 log10(R^2 / MSE) with R = 5.326794 m/s.
+- SSIM is implemented directly instead of calling `piq.ssim`, because piq rejects inputs outside [0, data_range] and predictions can fall slightly outside the training range. Same formula and constants as piq (11x11 Gaussian window, sigma 1.5, K1 = 0.01, K2 = 0.03, no padding); matches piq to 3e-6 where piq accepts the input. Fields are shifted by one fixed offset, the training minimum (-2.457645 m/s, `hr_train_min` in `config.json`), with `data_range = R`; no clipping, no per-sample rescaling; mean of u and v.
+- Radial shells follow the existing KE convention: k = |(kx, ky)| in cycles per 128-pixel domain, shell [k, k + 1), k = 1..63.
+- Per-band error: MSE split by Parseval into bands with edges k = 0, 5, 10, 20, 40 and the corners (k up to 64 sqrt 2), so the bands add up exactly to the MSE; `band_k_ge_D0` = bands with k >= 10.
+- rho(k) sums u and v together within each shell (absolute value of the complex cross sum). k_c follows the FRC "first crossing" convention: the last k before rho first drops below 1/2, so noise re-crossing 1/2 at high k can't inflate it; 0 if rho(1) < 1/2, 63 if it never drops.
+- The spectral-slope function is in place but its fitting range is not fixed yet (awaiting confirmation). Every evaluation stores the per-sample radial spectra of prediction and target in `spectra.npz`, so the slope can be computed later without re-running any model.
+- Secondary LPIPS (appendix): VGG and AlexNet backbones, through the same `lpips_utils.lpips_distance` the training loss uses (a test checks it is the same function object).
+- Test dates come from the netCDF `MT` variable (`scripts/make_test_dates.py` -> `evaluation/test_dates.csv`): 974 days, 2022-01-01 to 2024-08-31, in the .npy order. The patch (22.9-27.5 N, 90.1-85.0 W) is all ocean, and one HR pixel is 0.04 deg (about 4 km), so k = 1 is a wavelength of about 5.1 deg.
+- Wiener/Tikhonov: the same H(k) as the dataset; gamma is chosen on a log grid 1e-8..1 (33 values) by the lowest validation MSE; the chosen gamma and the whole curve go into `results/baseline_wiener/config.json`.
+- Evaluation reads architecture, residual flag and the three constants from the run's `config.json` and refuses the run (clear error, run listed as not evaluated) if the file or any key is missing, instead of building a model with guessed settings.
