@@ -101,7 +101,11 @@ def main():
     secax.set_xlabel('σ / std of the velocity field')
     os.makedirs(os.path.join(ROOT, 'figures'), exist_ok=True)
     for ext in ('png', 'pdf'):
-        fig.savefig(os.path.join(ROOT, f'figures/wiener_kc_vs_sigma.{ext}'), dpi=200, bbox_inches='tight')
+        # No embedded dates: re-running must not change a tracked file (it
+        # would block real runs through train.py's clean-tree check).
+        fig.savefig(os.path.join(ROOT, f'figures/wiener_kc_vs_sigma.{ext}'), dpi=200, bbox_inches='tight',
+                    metadata={'png': {'Software': None},
+                              'pdf': {'CreationDate': None, 'ModDate': None, 'Producer': None}}[ext])
 
     print(f"\nfield std {scales['std']:.4f} m/s, mean speed |V| {scales['mean_speed']:.4f} m/s, "
           f"mean |u|,|v| {scales['mean_abs_component']:.4f} m/s (training HR, 2001-2019)")
