@@ -28,4 +28,14 @@ One line per decision not covered by the instructions, with the reason.
 - `best.pt` is saved on any strict decrease of `val_mse`, so it can come from an epoch the stopping rule counted as "no significant improvement" (seen in the tests: new best at epoch 52 while the counter went to 1).
 - `ReduceLROnPlateau` keeps its previous settings (patience 5, factor 0.5, PyTorch's default relative threshold 1e-4) and is now fed the validation MSE.
 - `NUM_EPOCHS` is ignored by `train.py`; the limits are `MIN_EPOCHS`=50 and `MAX_EPOCHS`=300 by default. The keys `MIN_EPOCHS`, `MAX_EPOCHS`, `ES_PATIENCE`, `ES_REL_DELTA` exist only to shrink quick tests; the resolved values are saved under `stopping` in `config.json`.
+- Thesis wording for the rule: "each run trains at least 50 epochs and stops when the relative improvement of the validation MSE stays below 0.1% for 15 consecutive epochs (at most 300 epochs)".
 - `EarlyStopping` gained `relative` and `min_epochs` arguments; with the defaults (`relative=False`, `min_epochs=0`) it behaves exactly like the old class, which `train_multistage.py` still uses (checked on 500 random sequences: identical counters, bests and stop flags).
+
+## 4.3 Global residual
+
+- `create_model(name, residual=True|False)` wraps every architecture in `GlobalResidual`: `y = x + f(x)` when true, `y = f(x)` when false. SRNO/SoFoNO's built-in bilinear input skip is switched off (`input_skip = False`) in both cases, so `residual=false` means no global skip for all five architectures (for SRNO/SoFoNO this removes a skip the original models had).
+- `create_model(name)` with `residual=None` still returns the untouched original models, because the old checkpoints, `train_multistage.py`, the report scripts and the notebooks load them that way.
+- Checkpoints trained with the new option have their keys under `net.` (the wrapper); load them with `create_model(name, residual=<value in config.json>)`.
+- `RESIDUAL` has no default: a config without an explicit `true`/`false` is rejected, and the run name gets `_res` or `_nores`, so block D (ablation) can never land under a block A name.
+- SoFoNO builds its query grid with `ranges=(-1, 1)`, the same as SRNO, so its bilinear skip is also exactly the identity at s = 1 (max abs diff 0.0); both operators are therefore numerically unchanged with `residual=true`.
+- `tests/test_residual.py` loads the model code of commit 6c5e0ff (before the change) from git and checks bit-identical outputs with the same weights: the 3 CNNs with `residual=false`, SRNO/SoFoNO with `residual=true`, and all 5 with `residual=None`; plus test (e) and a zeroed-output check that `residual=false` leaves no hidden skip.

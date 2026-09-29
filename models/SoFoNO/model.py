@@ -307,6 +307,11 @@ class SoFoNO(nn.Module):
 
         self.fc1 = nn.Conv2d(self.width, self.width, 1)
         self.fc2 = nn.Conv2d(self.width, out_channels, 1)
+        # The original model adds a bilinear resample of the input (a global
+        # skip). At scale 1 that resample is exactly the identity, so
+        # create_model(residual=...) turns it off and adds x itself, giving
+        # every architecture the same skip.
+        self.input_skip = True
 
     def gen_feat(self, inp):
         self.inp = inp
@@ -371,9 +376,10 @@ class SoFoNO(nn.Module):
             x = kernel(x, self.s, i, self.T)
 
         ret = self.fc2(F.gelu(self.fc1(x)))
-        ret = ret + F.grid_sample(
-            self.inp, coord.flip(-1), mode='bilinear', padding_mode='border', align_corners=False
-        )
+        if self.input_skip:
+            ret = ret + F.grid_sample(
+                self.inp, coord.flip(-1), mode='bilinear', padding_mode='border', align_corners=False
+            )
         return ret
 
     def _query_grid_for(self, x):

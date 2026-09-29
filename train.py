@@ -211,9 +211,19 @@ CSV_FIELDS = ['epoch', 'lr', 'epoch_sec', 'train_total', 'train_mse', 'train_lpi
               'val_total', 'val_mse', 'val_lpips', 'best_val_mse', 'es_metric', 'es_best', 'es_counter']
 
 
+def residual_flag(config):
+    # Required and explicit: blocks A and D differ only in this flag, so a
+    # silent default could put an ablation run under a main-configuration name.
+    value = config.get('RESIDUAL')
+    if not isinstance(value, bool):
+        raise ValueError(f"RESIDUAL must be set to true or false in the config (got {value!r}).")
+    return value
+
+
 def run_id_for(config, config_path):
     name = config.get('RUN_NAME') or os.path.splitext(os.path.basename(config_path))[0]
-    return f"{name}_seed{config.get('SEED', 0)}"
+    skip = 'res' if residual_flag(config) else 'nores'
+    return f"{name}_{skip}_seed{config.get('SEED', 0)}"
 
 
 def dataset_constants(hr_data):
@@ -332,7 +342,8 @@ def main(config, config_path, deadline=None):
     )
 
     print(f"Initializing model: {upper_model}")
-    model = create_model(current_model, in_channels=2, out_channels=2)
+    residual = residual_flag(config)
+    model = create_model(current_model, in_channels=2, out_channels=2, residual=residual)
     n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     if torch.cuda.device_count() > 1:
         print(f"Using {torch.cuda.device_count()} GPUs!")
@@ -370,6 +381,7 @@ def main(config, config_path, deadline=None):
     else:
         meta = {
             'run_id': run_id, 'config_file': config_path, 'config': run_config, 'seed': seed,
+            'model': current_model, 'residual': residual,
             'n_params': n_params, 'git': git, 'libraries': repro.library_versions(),
             'deterministic': deterministic, 'deterministic_algorithms': deterministic_algorithms,
             'created': datetime.now().isoformat(), 'stopping': stopping,
@@ -401,7 +413,7 @@ def main(config, config_path, deadline=None):
             'run_id': run_id, 'status': status, 'epochs_completed': epoch_done,
             'best_epoch': best_epoch, 'best_val_mse': best_monitor, 'monitor_metric': 'val_mse',
             'final_lr': optimizer.param_groups[0]['lr'], 'train_hours': train_time_sec / 3600,
-            'n_params': n_params, 'finished': datetime.now().isoformat(),
+            'n_params': n_params, 'residual': residual, 'finished': datetime.now().isoformat(),
         }
         write_json(summary, paths['summary.json'])
         print(f"[{run_id}] {status} after {epoch_done} epochs "
