@@ -60,8 +60,37 @@ With sigma = 1e-2: Wiener MSE 2.28e-3, PSNR 41.05, k_c 22 (`tables/wiener_noise_
 | SoFoNO | fast | 0 | 245.6 | 13 204 MiB (81%) |
 | SoFoNO | fast | 0.1 | 280.7 | 13 266 MiB (81%) |
 
+Short pilot (real block configs, 2 epochs, full data; seconds per epoch = second epoch, training + validation with LPIPS logging):
+
+| Arch | Mode | lambda = 0 | lambda > 0 | Peak lambda = 0 / > 0 (MiB) |
+|---|---|---|---|---|
+| SRCNN | fast | 6.2 | 31.9 | 3324 / 4726 |
+| DSC/MS | fast | 20.6 | 46.2 | 3470 / 5640 |
+| PRUSR | fast | 104.1 | 128.8 | 9688 / 9688 |
+| SRNO | deterministic | 179.5 | 207.4 (memory check) | 12294 / 13212 |
+| SoFoNO | fast | 243.0 | 280.7 (memory check) | 13204 / 13266 |
+
 Memory check done: no run above ~15 GB, so no batch size was reduced.
+
+## GPU-hours per block (`scripts/gpu_hours.py`)
+
+Epochs per run: 50 (minimum), 150 (central; the new rule replayed on the old LPIPS logs gives 139-202 for the CNNs, >= 86-107 for the operators, and every old MSE run was cut short, `scripts/estimate_epochs.py`), 300 (maximum).
+
+| Block | Runs | 50 ep | 150 ep | 300 ep |
+|---|---|---|---|---|
+| A (5 archs x 3 seeds, MSE) | 15 | 23.1 | 69.2 | 138.3 |
+| B (lambda sweep, SRNO + SRCNN) | 8 | 13.3 | 39.9 | 79.8 |
+| C (best lambda, 3 seeds, minus the 2 seed-0 runs from B) | 13 | 25.6 | 76.9 | 153.8 |
+| D (residual=false, 5 archs) | 5 | 7.7 | 23.1 | 46.1 |
+| Regime B, sigma = 1e-2 (5 MSE + 5 best lambda) | 10 | 17.3 | 52.0 | 104.0 |
+| **A+B+C+D+regime B** | 51 | **87.0** | **261.0** | **522.0** |
+| E (4 stages + control), best arch SRCNN .. SoFoNO | 5 | 0.9-34.7 | 2.7-104.1 | 5.3-208.1 |
+| **Total with E** | 56 | 88-122 | 264-365 | 527-730 |
+
+The central estimate is above ~250 h; nothing has been cut (waiting for the user). Regime B is counted as 10 runs (what make_block_n.py generates); the user mentioned 13.
 
 ## Open items
 
-- Short pilot and GPU-hours estimate per block.
+- Decide on the budget (the central estimate is above ~250 h).
+- Composition of regime B (10 runs as generated, or 13).
+- make_block_c.py takes one sweep architecture; with the sweep on SRNO and SRCNN it must skip both seed-0 runs (to be adapted before block C).
