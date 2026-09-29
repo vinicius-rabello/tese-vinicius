@@ -8,13 +8,19 @@ import subprocess
 import numpy as np
 import torch
 
-# cuBLAS only runs deterministically with a fixed workspace; it reads this
-# variable when its handle is created, so it must be set before the first
-# CUDA matmul in the process (importing this module early is enough).
-os.environ.setdefault("CUBLAS_WORKSPACE_CONFIG", ":4096:8")
-
-
 def set_seed(seed: int, deterministic: bool = True, deterministic_algorithms: bool = True):
+    """Seeds random, numpy and torch (CPU and CUDA). deterministic=True gives
+    bit-reproducible runs (cudnn.deterministic, no autotuning, deterministic
+    algorithms); deterministic=False enables cudnn.benchmark autotuning, which
+    is several times faster (PRUSR: 4.6x) but only reproducible up to
+    floating-point reordering."""
+    # cuBLAS is deterministic only with a fixed workspace, read when its handle
+    # is created (the first CUDA matmul in the process); it also restricts
+    # cuBLAS, so it is set only when bit-reproducibility is asked for.
+    if deterministic and deterministic_algorithms:
+        os.environ.setdefault("CUBLAS_WORKSPACE_CONFIG", ":4096:8")
+    else:
+        os.environ.pop("CUBLAS_WORKSPACE_CONFIG", None)
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)

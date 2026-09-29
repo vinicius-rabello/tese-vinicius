@@ -295,7 +295,9 @@ def main(config, config_path, deadline=None):
     absolute time.time() value from --max-hours; when the next epoch would
     cross it, the run stops cleanly (its last.pt is already saved)."""
     seed = int(config.get('SEED', 0))
-    deterministic = config.get('DETERMINISTIC', True)
+    # Default: cudnn.benchmark autotuning, not bit-reproducible (4.6x faster on PRUSR);
+    # DETERMINISTIC: true gives the bit-reproducible setting.
+    deterministic = config.get('DETERMINISTIC', False)
     deterministic_algorithms = config.get('DETERMINISTIC_ALGORITHMS', True)
     repro.set_seed(seed, deterministic, deterministic_algorithms)
 

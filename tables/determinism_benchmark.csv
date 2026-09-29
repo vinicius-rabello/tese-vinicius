@@ -1,0 +1,7 @@
+arch,setting,cudnn_deterministic,cudnn_benchmark,deterministic_algorithms,train_epoch_sec,val_sec,val_with_lpips_sec,epoch_sec_with_val,epoch_sec_with_val_lpips,val_mse_after_epoch,val_lpips_after_epoch,peak_mem_gb
+prusr,1,False,True,False,105.6,5.7,7.0,111.3,112.6,0.0025979121876230768,0.2973604676824588,9.77
+prusr,2,True,False,False,504.7,10.0,11.5,514.6,516.2,0.002614833565846738,0.29833332808986407,2.56
+prusr,3,True,False,True,504.8,10.0,11.5,514.8,516.3,0.002614833565846738,0.29833332808986407,2.56
+prusr,4,False,False,False,256.6,9.9,11.5,266.5,268.0,0.0025796710813568366,0.29709561244570604,2.56
+srno,1,False,True,False,172.9,5.9,7.5,178.9,180.4,0.002003094133641953,0.25240577392473756,13.04,14.91
+sofono,1,False,True,False,235.0,8.5,10.7,243.5,245.6,0.0018617097097582778,0.24344924634523823,13.36,13.44
