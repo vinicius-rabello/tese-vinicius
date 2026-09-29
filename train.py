@@ -9,10 +9,16 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import os
+import csv
+import json
 import time
 from datetime import datetime
+
+import numpy as np
+from torch.utils.data import Subset
 from datasets.super_res_dataset import SuperResDataset
 from losses.losses import FluidCompositeLoss
+from utils import reproducibility as repro
 
 class EarlyStopping:
     def __init__(self, patience=15, min_delta=1e-4):
@@ -31,6 +37,14 @@ class EarlyStopping:
             print(f"EarlyStopping counter: {self.counter} out of {self.patience}")
             if self.counter >= self.patience:
                 self.early_stop = True
+
+    def state_dict(self):
+        return {'counter': self.counter, 'best_loss': self.best_loss, 'early_stop': self.early_stop}
+
+    def load_state_dict(self, state):
+        self.counter = state['counter']
+        self.best_loss = state['best_loss']
+        self.early_stop = state['early_stop']
 
 
 def train_one_epoch(
@@ -71,7 +85,7 @@ def train_one_epoch(
         # Save a sample subplot grid periodically (first batch of every Nth epoch)
         image_save_interval = config.get('IMAGE_SAVE_INTERVAL', 10)
         if batch_idx == 0 and epoch % image_save_interval == 0:
-            os.makedirs(os.path.join(config['ROOT_FOLDER'], "output/images"), exist_ok=True)
+            os.makedirs(os.path.join(config['RUN_DIR'], "images"), exist_ok=True)
             
             # Extract first image in the batch, first channel
             lr_img = lr.detach().cpu().numpy()[0][0]
@@ -111,7 +125,7 @@ def train_one_epoch(
             plt.colorbar(im2, ax=axes[2], fraction=0.046, pad=0.04)
             
             plt.tight_layout()
-            save_path = os.path.join(config['ROOT_FOLDER'], f"output/images/sample_epoch{epoch}_batch{batch_idx}.png")
+            save_path = os.path.join(config['RUN_DIR'], f"images/sample_epoch{epoch}_batch{batch_idx}.png")
             plt.savefig(save_path, bbox_inches='tight', dpi=150)
             plt.close(fig)
             
@@ -174,206 +188,287 @@ def load_checkpoint(model: nn.Module, optimizer: torch.optim.Optimizer, filepath
     return checkpoint['epoch'], checkpoint['train_loss'], checkpoint['val_loss']
 
 
-def main(config):
-    # Set random seed for reproducibility
-    torch.manual_seed(42)
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed_all(42)
-    
-    # 1. EXTRACT MODEL NAME FROM CONFIG (Defaults to 'dscms' if missing)
+# ---------------------------------------------------------------------------
+# Run management: stable run directory, full checkpoints, auto-resume.
+# ---------------------------------------------------------------------------
+COMPLETED_STATUSES = ('completed_early_stop', 'completed_max_epochs')
+CSV_FIELDS = ['epoch', 'lr', 'epoch_sec', 'train_total', 'train_mse', 'train_lpips',
+              'val_total', 'val_mse', 'val_lpips', 'monitor', 'best_monitor', 'es_counter']
+
+
+def run_id_for(config, config_path):
+    name = config.get('RUN_NAME') or os.path.splitext(os.path.basename(config_path))[0]
+    return f"{name}_seed{config.get('SEED', 0)}"
+
+
+def dataset_constants(hr_data):
+    """Fixed, data-derived constants shared by every run (computed on the full
+    training HR set, u and v together): the PSNR/SSIM reference range R and
+    the LPIPS input scale that maps the fields into [-1, 1]."""
+    return {
+        'psnr_ssim_R': float(hr_data.max() - hr_data.min()),
+        'lpips_scale': float(np.abs(hr_data).max()),
+    }
+
+
+def atomic_torch_save(obj, path):
+    # A kill mid-write must never leave a truncated checkpoint behind.
+    tmp = path + '.tmp'
+    torch.save(obj, tmp)
+    os.replace(tmp, path)
+
+
+def write_json(obj, path):
+    tmp = path + '.tmp'
+    with open(tmp, 'w') as f:
+        json.dump(obj, f, indent=2, default=str)
+    os.replace(tmp, path)
+
+
+def read_json(path):
+    with open(path) as f:
+        return json.load(f)
+
+
+def unwrap(model):
+    return model.module if isinstance(model, nn.DataParallel) else model
+
+
+def truncate_csv(path, max_epoch):
+    """On resume, drop log rows for epochs the checkpoint doesn't cover (a run
+    killed between the CSV append and the checkpoint save would otherwise log
+    that epoch twice)."""
+    if not os.path.exists(path):
+        return
+    with open(path, newline='') as f:
+        rows = [r for r in csv.DictReader(f) if int(r['epoch']) <= max_epoch]
+    with open(path, 'w', newline='') as f:
+        writer = csv.DictWriter(f, fieldnames=CSV_FIELDS)
+        writer.writeheader()
+        writer.writerows(rows)
+
+
+def append_csv(path, row):
+    new_file = not os.path.exists(path)
+    with open(path, 'a', newline='') as f:
+        writer = csv.DictWriter(f, fieldnames=CSV_FIELDS)
+        if new_file:
+            writer.writeheader()
+        writer.writerow(row)
+
+
+def main(config, config_path, deadline=None):
+    """Trains one run. Returns its final status string. `deadline` is an
+    absolute time.time() value from --max-hours; when the next epoch would
+    cross it, the run stops cleanly (its last.pt is already saved)."""
+    seed = int(config.get('SEED', 0))
+    deterministic = config.get('DETERMINISTIC', True)
+    deterministic_algorithms = config.get('DETERMINISTIC_ALGORITHMS', True)
+    repro.set_seed(seed, deterministic, deterministic_algorithms)
+
     current_model = config.get('MODEL_NAME', 'dscms').lower()
     upper_model = current_model.upper()
 
-    # Append a run timestamp to ROOT_FOLDER so the same config can be launched
-    # multiple times without each run overwriting the previous one's output.
-    run_timestamp = datetime.now().strftime('%d_%m_%Y_%H%M%S')
-    config['ROOT_FOLDER'] = os.path.join(config['ROOT_FOLDER'].rstrip('/'), run_timestamp) + '/'
-    print(f"Run output folder: {config['ROOT_FOLDER']}")
+    run_id = run_id_for(config, config_path)
+    run_dir = os.path.join(config.get('RESULTS_DIR', 'results'), run_id)
+    config['RUN_DIR'] = run_dir
+    os.makedirs(run_dir, exist_ok=True)
+    paths = {name: os.path.join(run_dir, name) for name in
+             ('config.json', 'summary.json', 'train_log.csv', 'last.pt', 'best.pt')}
 
-    # Create output directories
-    os.makedirs(os.path.join(config['ROOT_FOLDER'], "output/logs"), exist_ok=True)
-    os.makedirs(os.path.join(config['ROOT_FOLDER'], "output/weights"), exist_ok=True)
-    os.makedirs(os.path.join(config['ROOT_FOLDER'], "output/images"), exist_ok=True)
-    
-    # Load datasets and dataloaders
+    if os.path.exists(paths['summary.json']):
+        status = read_json(paths['summary.json']).get('status')
+        if status in COMPLETED_STATUSES:
+            print(f"[{run_id}] already {status} -- skipping.")
+            return status
+
+    print(f"Run: {run_id} -> {run_dir}")
+
     train_dataset = SuperResDataset(
-        hr_files=[
-            f"./hycom_numpy/hycom_{year}.npy"
-            for year in range(2001, 2020)
-        ],
+        hr_files=[f"./hycom_numpy/hycom_{year}.npy" for year in range(2001, 2020)],
         downsample_factor=1,
-        freq_threshold=10
+        freq_threshold=10,
     )
-
     val_dataset = SuperResDataset(
-        hr_files=[
-            "./hycom_numpy/hycom_2020.npy",
-            "./hycom_numpy/hycom_2021.npy",
-        ],
+        hr_files=["./hycom_numpy/hycom_2020.npy", "./hycom_numpy/hycom_2021.npy"],
         downsample_factor=1,
-        freq_threshold=10
+        freq_threshold=10,
     )
+    constants = dataset_constants(train_dataset.hr_data)
+    print(f"PSNR/SSIM R = {constants['psnr_ssim_R']:.6f} m/s | LPIPS scale = {constants['lpips_scale']:.6f} m/s")
 
+    # Optional subsets, for quick sanity runs only (constants above always
+    # come from the full training set).
+    if config.get('SUBSET_TRAIN'):
+        train_dataset = Subset(train_dataset, range(int(config['SUBSET_TRAIN'])))
+    if config.get('SUBSET_VAL'):
+        val_dataset = Subset(val_dataset, range(int(config['SUBSET_VAL'])))
+
+    loader_generator = repro.make_generator(seed)
     train_loader = DataLoader(
-        train_dataset,
-        batch_size=config['BATCH_SIZE'],
-        shuffle=True,
-        num_workers=config['NUM_WORKERS'],
-        pin_memory=True,
+        train_dataset, batch_size=config['BATCH_SIZE'], shuffle=True,
+        num_workers=config['NUM_WORKERS'], pin_memory=True,
+        worker_init_fn=repro.seed_worker, generator=loader_generator,
+    )
+    val_loader = DataLoader(
+        val_dataset, batch_size=config['BATCH_SIZE'], shuffle=False,
+        num_workers=config['NUM_WORKERS'], pin_memory=True,
+        worker_init_fn=repro.seed_worker, generator=repro.make_generator(seed),
     )
 
-    val_loader = DataLoader(
-        val_dataset,
-        batch_size=config['BATCH_SIZE'],
-        shuffle=False,
-        num_workers=config['NUM_WORKERS'],
-        pin_memory=True,
-    )
-    
-    # 2. INITIALIZE MODEL VIA FACTORY
     print(f"Initializing model: {upper_model}")
     model = create_model(current_model, in_channels=2, out_channels=2)
-    
-    # Check if multiple GPUs are available
+    n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     if torch.cuda.device_count() > 1:
         print(f"Using {torch.cuda.device_count()} GPUs!")
         model = nn.DataParallel(model)
-        
     model = model.to(config['DEVICE'])
-    
-    # Loss and optimizer
-    criterion = FluidCompositeLoss(
-        mode=config['LOSS_MODE'], 
-        weights=config['LOSS_WEIGHTS'], 
-        device=config['DEVICE'],
-        img_size=128 
-    )
-    optimizer = optim.Adam(
-        model.parameters(), lr=config['LEARNING_RATE'], weight_decay=1e-4)
-    scheduler = ReduceLROnPlateau(
-        optimizer, mode='min', patience=5, factor=0.5)
 
-    # Track best model based on TOTAL validation loss
-    best_val_loss = float('inf')
-    
-    # Initialize early stopping
+    criterion = FluidCompositeLoss(
+        mode=config['LOSS_MODE'], weights=config['LOSS_WEIGHTS'], device=config['DEVICE'], img_size=128)
+    optimizer = optim.Adam(model.parameters(), lr=config['LEARNING_RATE'], weight_decay=1e-4)
+    scheduler = ReduceLROnPlateau(optimizer, mode='min', patience=5, factor=0.5)
     early_stopper = EarlyStopping(patience=15, min_delta=1e-4)
-    
-    # Checkpoint resuming
-    start_epoch = 0
-    resume_checkpoint_path = config.get('RESUME_CHECKPOINT', None)
-    
-    if resume_checkpoint_path and os.path.exists(resume_checkpoint_path):
-        print(f"Resuming training from {resume_checkpoint_path}")
-        start_epoch, _, _ = load_checkpoint(model, optimizer, resume_checkpoint_path)
+
+    git = repro.git_info()
+    run_config = {k: v for k, v in config.items() if k != 'RUN_DIR'}
+    if os.path.exists(paths['config.json']):
+        meta = read_json(paths['config.json'])
+        meta.setdefault('resumes', []).append({'time': datetime.now().isoformat(), 'git': git})
+    else:
+        meta = {
+            'run_id': run_id, 'config_file': config_path, 'config': run_config, 'seed': seed,
+            'n_params': n_params, 'git': git, 'libraries': repro.library_versions(),
+            'deterministic': deterministic, 'deterministic_algorithms': deterministic_algorithms,
+            'created': datetime.now().isoformat(), **constants,
+        }
+    write_json(meta, paths['config.json'])
+
+    start_epoch, best_monitor, best_epoch, train_time_sec = 0, float('inf'), 0, 0.0
+    if os.path.exists(paths['last.pt']):
+        # Load on CPU: RNG states must stay CPU ByteTensors; load_state_dict moves
+        # weights and optimizer state onto the model's device itself.
+        ckpt = torch.load(paths['last.pt'], map_location='cpu', weights_only=False)
+        unwrap(model).load_state_dict(ckpt['model_state_dict'])
+        optimizer.load_state_dict(ckpt['optimizer_state_dict'])
+        scheduler.load_state_dict(ckpt['scheduler_state_dict'])
+        early_stopper.load_state_dict(ckpt['early_stopper'])
+        repro.set_rng_state(ckpt['rng_state'], loader_generator)
+        start_epoch, best_monitor = ckpt['epoch'], ckpt['best_monitor']
+        best_epoch, train_time_sec = ckpt['best_epoch'], ckpt['train_time_sec']
+        truncate_csv(paths['train_log.csv'], start_epoch)
+        print(f"Resumed from epoch {start_epoch} (best {best_monitor:.6g} @ epoch {best_epoch}).")
     else:
         print("Starting training from scratch.")
-        
-    cumulative_time_sec = 0.0
-    
-    # 3. SET DYNAMIC FILE PATHS BASED ON MODEL NAME
-    log_file_path = os.path.join(config['ROOT_FOLDER'], f"output/logs/{upper_model}_loss.txt")
-    best_weight_path = os.path.join(config['ROOT_FOLDER'], f"output/weights/{upper_model}_best.pth")
-    
-    # Training loop
+
+    def finish(status):
+        summary = {
+            'run_id': run_id, 'status': status, 'epochs_completed': epoch_done,
+            'best_epoch': best_epoch, 'best_monitor': best_monitor, 'monitor_metric': 'val_total',
+            'final_lr': optimizer.param_groups[0]['lr'], 'train_hours': train_time_sec / 3600,
+            'n_params': n_params, 'finished': datetime.now().isoformat(),
+        }
+        write_json(summary, paths['summary.json'])
+        print(f"[{run_id}] {status} after {epoch_done} epochs "
+              f"(best {best_monitor:.6g} @ epoch {best_epoch}, {train_time_sec / 3600:.2f}h).")
+        return status
+
+    epoch_done = start_epoch
+    if early_stopper.early_stop:
+        return finish('completed_early_stop')
+
     for epoch in range(start_epoch, config['NUM_EPOCHS']):
-        epoch_start_time = time.perf_counter()
-        
-        # Train for one epoch (Pass upper_model down for the plot title)
+        epoch_start = time.perf_counter()
         train_metrics = train_one_epoch(
-            model, train_loader, optimizer, criterion, config['DEVICE'], epoch+1, config, upper_model)
-        
-        # Validate
+            model, train_loader, optimizer, criterion, config['DEVICE'], epoch + 1, config, upper_model)
         val_metrics = validate(model, val_loader, criterion, config['DEVICE'])
-        
-        # Scheduler steps based on total validation loss
-        scheduler.step(val_metrics['total'])
-        current_lr = optimizer.param_groups[0]['lr']
-        
-        # Calculate time taken for this epoch
-        epoch_duration = time.perf_counter() - epoch_start_time
-        cumulative_time_sec += epoch_duration
-        cumulative_time_hrs = cumulative_time_sec / 3600
 
-        # Format the log string
-        log_str = (
-            f"[Duration: {epoch_duration:.1f}s | Total Duration: {cumulative_time_hrs:.2f}h] Epoch [{epoch+1}/{config['NUM_EPOCHS']}] | LR: {current_lr:.6f}\n"
-            f"  Train -> Total: {train_metrics['total']:.6f} | MSE: {train_metrics['mse']:.6f} | "
-            f"LPIPS: {train_metrics['lpips']:.6f} | Kin: {train_metrics['kinetic']:.6f} | "
-            f"WKin: {train_metrics['weighted_kinetic']:.6f}\n"
-            f"  Val   -> Total: {val_metrics['total']:.6f} | MSE: {val_metrics['mse']:.6f} | "
-            f"LPIPS: {val_metrics['lpips']:.6f} | Kin: {val_metrics['kinetic']:.6f} | "
-            f"WKin: {val_metrics['weighted_kinetic']:.6f}\n"
-            f"{'-'*70}\n"
-        )
-        
-        # Print to console
-        print(log_str.strip())
+        monitor = val_metrics['total']
+        scheduler.step(monitor)
+        epoch_sec = time.perf_counter() - epoch_start
+        train_time_sec += epoch_sec
+        epoch_done = epoch + 1
 
-        # Append to log file dynamically
-        with open(log_file_path, "a") as f:
-            f.write(log_str)
+        if monitor < best_monitor:
+            best_monitor, best_epoch = monitor, epoch_done
+            atomic_torch_save({'model_state_dict': unwrap(model).state_dict(), 'epoch': epoch_done,
+                               'val_metrics': val_metrics}, paths['best.pt'])
+        early_stopper(monitor)
 
-        # Save best model dynamically
-        if val_metrics['total'] < best_val_loss:
-            best_val_loss = val_metrics['total']
-            save_checkpoint(model, optimizer, epoch+1, train_metrics['total'], val_metrics['total'],
-                          best_weight_path)
-        
-        # Save checkpoint every 50 epochs dynamically
-        if (epoch+1) % 50 == 0:
-            epoch_weight_path = os.path.join(config['ROOT_FOLDER'], f"output/weights/{upper_model}_epoch{epoch+1}.pth")
-            save_checkpoint(model, optimizer, epoch+1, train_metrics['total'], val_metrics['total'],
-                          epoch_weight_path)
+        atomic_torch_save({
+            'epoch': epoch_done,
+            'model_state_dict': unwrap(model).state_dict(),
+            'optimizer_state_dict': optimizer.state_dict(),
+            'scheduler_state_dict': scheduler.state_dict(),
+            'early_stopper': early_stopper.state_dict(),
+            'best_monitor': best_monitor,
+            'best_epoch': best_epoch,
+            'train_time_sec': train_time_sec,
+            'rng_state': repro.get_rng_state(loader_generator),
+        }, paths['last.pt'])
 
-        # Check early stopping
-        early_stopper(val_metrics['total'])
+        lr_now = optimizer.param_groups[0]['lr']
+        append_csv(paths['train_log.csv'], {
+            'epoch': epoch_done, 'lr': lr_now, 'epoch_sec': round(epoch_sec, 2),
+            'train_total': train_metrics['total'], 'train_mse': train_metrics['mse'],
+            'train_lpips': train_metrics['lpips'],
+            'val_total': val_metrics['total'], 'val_mse': val_metrics['mse'], 'val_lpips': val_metrics['lpips'],
+            'monitor': monitor, 'best_monitor': best_monitor, 'es_counter': early_stopper.counter,
+        })
+        print(f"[{run_id}] epoch {epoch_done}/{config['NUM_EPOCHS']} ({epoch_sec:.1f}s, total {train_time_sec / 3600:.2f}h) "
+              f"lr {lr_now:.2e} | train mse {train_metrics['mse']:.6g} lpips {train_metrics['lpips']:.4g} | "
+              f"val mse {val_metrics['mse']:.6g} lpips {val_metrics['lpips']:.4g} | "
+              f"best {best_monitor:.6g} @ {best_epoch} | es {early_stopper.counter}/{early_stopper.patience}")
+
         if early_stopper.early_stop:
-            print("Early stopping triggered! Validation loss has not improved sufficiently.")
-            break
+            return finish('completed_early_stop')
+        # Stop before an epoch that would run past the budget, not after it.
+        if deadline is not None and time.time() + epoch_sec > deadline:
+            return finish('interrupted_max_hours')
+
+    return finish('completed_max_epochs')
 
 
-# 4. NEW ENTRY POINT - READS THE YAML CONFIG(S)
 if __name__ == "__main__":
     import argparse
     import yaml
     import traceback
 
-    # Accepts one or more YAML configs. With more than one, they run as a
-    # queue: each trains to completion (or early stopping) before the next
-    # starts, so a whole night's worth of runs can be launched in one command.
+    # One or more YAML configs run as a queue. Relaunching the same queue
+    # skips finished runs and resumes an interrupted one from its last.pt.
     parser = argparse.ArgumentParser(description="Train Super Resolution Models")
     parser.add_argument('--config', type=str, required=True, nargs='+',
-                         help="Path(s) to one or more YAML config files")
+                        help="Path(s) to one or more YAML config files")
+    parser.add_argument('--max-hours', type=float, default=None,
+                        help="Wall-clock budget for the whole queue; stops cleanly before exceeding it")
     args = parser.parse_args()
+
+    queue_start = time.time()
+    deadline = queue_start + args.max_hours * 3600 if args.max_hours else None
 
     print(f"Queued {len(args.config)} run(s):")
     for config_path in args.config:
         print(f"  - {config_path}")
+    if deadline:
+        print(f"Budget: {args.max_hours}h (until {datetime.fromtimestamp(deadline).isoformat(timespec='minutes')})")
 
-    queue_start = time.perf_counter()
-    failed_configs = []
-
+    results = {}
     for i, config_path in enumerate(args.config, start=1):
         print(f"\n{'=' * 70}\nQueue [{i}/{len(args.config)}]: {config_path}\n{'=' * 70}")
-
         with open(config_path, 'r') as file:
             experiment_config = yaml.safe_load(file)
-
         try:
-            main(experiment_config)
+            results[config_path] = main(experiment_config, config_path, deadline)
         except Exception:
             print(f"Run failed for {config_path} -- skipping to the next queued config.")
             traceback.print_exc()
-            failed_configs.append(config_path)
+            results[config_path] = 'failed'
         finally:
-            # Free GPU memory before the next queued run starts.
             torch.cuda.empty_cache()
+        if results[config_path] == 'interrupted_max_hours':
+            print("Time budget reached -- the remaining runs stay pending; relaunch the same queue to continue.")
+            break
 
-    queue_duration_hrs = (time.perf_counter() - queue_start) / 3600
-    succeeded = len(args.config) - len(failed_configs)
-    print(f"\nQueue finished in {queue_duration_hrs:.2f}h. {succeeded}/{len(args.config)} run(s) succeeded.")
-    if failed_configs:
-        print("Failed configs:")
-        for config_path in failed_configs:
-            print(f"  - {config_path}")
+    print(f"\nQueue stopped after {(time.time() - queue_start) / 3600:.2f}h.")
+    for config_path in args.config:
+        print(f"  {results.get(config_path, 'pending'):>24}  {config_path}")

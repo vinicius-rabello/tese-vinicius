@@ -35,3 +35,7 @@ models/**/output/images/
 
 # Logs
 /logs/
+# New run layout: keep config/summary/logs, not checkpoints or images
+results/**/*.pt
+results/**/*.tmp
+results/**/images/
