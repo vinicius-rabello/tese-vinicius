@@ -17,7 +17,7 @@ from datetime import datetime
 import numpy as np
 from torch.utils.data import Subset
 from datasets.super_res_dataset import SuperResDataset
-from losses.losses import FluidCompositeLoss
+from losses.losses import MseLpipsLoss
 from utils import reproducibility as repro
 
 class EarlyStopping:
@@ -73,8 +73,7 @@ def train_one_epoch(
     model_name_display: str
 ) -> dict:
     model.train()
-    # Initialize dictionary to accumulate losses
-    epoch_losses = {'total': 0.0, 'mse': 0.0, 'lpips': 0.0, 'kinetic': 0.0, 'weighted_kinetic': 0.0}
+    sums, n_samples = {}, 0
     loop = tqdm(train_loader, leave=True, desc=f"Epoch {epoch}")
     
     for batch_idx, (lr, hr) in enumerate(loop):
@@ -90,9 +89,10 @@ def train_one_epoch(
         torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=0.5)
         optimizer.step()
         
-        # Accumulate metrics
-        for key in epoch_losses:
-            epoch_losses[key] += batch_metrics[key]
+        # Sample-weighted sums, so the last (smaller) batch doesn't skew the epoch mean
+        n_samples += lr.shape[0]
+        for key, value in batch_metrics.items():
+            sums[key] = sums.get(key, 0.0) + value * lr.shape[0]
         
         # Update progress bar with total loss
         loop.set_postfix(loss=loss.item())
@@ -110,15 +110,10 @@ def train_one_epoch(
             # Create 1x3 subplot
             fig, axes = plt.subplots(1, 3, figsize=(15, 5))
             
-            # Dynamically format loss string based on chosen LOSS_MODE
-            loss_str = f"Total: {batch_metrics['total']:.4f} | MSE: {batch_metrics['mse']:.4f}"
-            if config['LOSS_MODE'] in (2, 3):
-                loss_str += f" | LPIPS: {batch_metrics['lpips']:.4f}"
-            if config['LOSS_MODE'] == 3:
-                loss_str += f" | Kin: {batch_metrics['kinetic']:.4f}"
-            if config['LOSS_MODE'] == 4:
-                loss_str += f" | WKin: {batch_metrics['weighted_kinetic']:.4f}"
-                
+            loss_str = f"Total: {batch_metrics['total']:.4g} | MSE: {batch_metrics['mse']:.4g}"
+            if config['LAMBDA'] > 0:
+                loss_str += f" | LPIPS: {batch_metrics['lpips']:.4g}"
+
             fig.suptitle(f"Epoch {epoch} - Batch {batch_idx}\n{loss_str}", fontsize=14, fontweight='bold')
             
             # Plot LR
@@ -144,11 +139,7 @@ def train_one_epoch(
             plt.savefig(save_path, bbox_inches='tight', dpi=150)
             plt.close(fig)
             
-    # Average the metrics over the epoch
-    for key in epoch_losses:
-        epoch_losses[key] /= len(train_loader)
-        
-    return epoch_losses
+    return {key: value / n_samples for key, value in sums.items()}
 
 
 def validate(
@@ -158,21 +149,17 @@ def validate(
     device: torch.device
 ) -> dict:
     model.eval()
-    val_losses = {'total': 0.0, 'mse': 0.0, 'lpips': 0.0, 'kinetic': 0.0, 'weighted_kinetic': 0.0}
-    
+    sums, n_samples = {}, 0
     with torch.no_grad():
         for lr, hr in val_loader:
             lr, hr = lr.to(device), hr.to(device)
             outputs = model(lr)
-            _, batch_metrics = criterion(outputs, hr)
-            
-            for key in val_losses:
-                val_losses[key] += batch_metrics[key]
-                
-    for key in val_losses:
-        val_losses[key] /= len(val_loader)
-        
-    return val_losses
+            # LPIPS is always logged on validation, whatever lambda is.
+            _, batch_metrics = criterion(outputs, hr, compute_lpips=True)
+            n_samples += lr.shape[0]
+            for key, value in batch_metrics.items():
+                sums[key] = sums.get(key, 0.0) + value * lr.shape[0]
+    return {key: value / n_samples for key, value in sums.items()}
 
 
 def save_checkpoint(model: nn.Module, optimizer: torch.optim.Optimizer, epoch: int, 
@@ -220,10 +207,19 @@ def residual_flag(config):
     return value
 
 
+def lambda_value(config):
+    # Required and explicit, like RESIDUAL: runs differing only in lambda must
+    # never share a name. 0 means plain MSE.
+    value = config.get('LAMBDA')
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or value < 0:
+        raise ValueError(f"LAMBDA must be set to a number >= 0 in the config (got {value!r}).")
+    return float(value)
+
+
 def run_id_for(config, config_path):
     name = config.get('RUN_NAME') or os.path.splitext(os.path.basename(config_path))[0]
     skip = 'res' if residual_flag(config) else 'nores'
-    return f"{name}_{skip}_seed{config.get('SEED', 0)}"
+    return f"{name}_{skip}_lam{lambda_value(config):g}_seed{config.get('SEED', 0)}"
 
 
 def dataset_constants(hr_data):
@@ -350,8 +346,9 @@ def main(config, config_path, deadline=None):
         model = nn.DataParallel(model)
     model = model.to(config['DEVICE'])
 
-    criterion = FluidCompositeLoss(
-        mode=config['LOSS_MODE'], weights=config['LOSS_WEIGHTS'], device=config['DEVICE'], img_size=128)
+    lam = lambda_value(config)
+    config['LAMBDA'] = lam
+    criterion = MseLpipsLoss(lam, constants['lpips_scale'], device=config['DEVICE'], net='vgg')
     optimizer = optim.Adam(model.parameters(), lr=config['LEARNING_RATE'], weight_decay=1e-4)
     scheduler = ReduceLROnPlateau(optimizer, mode='min', patience=5, factor=0.5)
 
@@ -381,7 +378,8 @@ def main(config, config_path, deadline=None):
     else:
         meta = {
             'run_id': run_id, 'config_file': config_path, 'config': run_config, 'seed': seed,
-            'model': current_model, 'residual': residual,
+            'model': current_model, 'residual': residual, 'lambda': lam,
+            'loss': 'mse + lambda * lpips (lpips: vgg, fields / lpips_scale, channel repeated x3, mean of u and v)',
             'n_params': n_params, 'git': git, 'libraries': repro.library_versions(),
             'deterministic': deterministic, 'deterministic_algorithms': deterministic_algorithms,
             'created': datetime.now().isoformat(), 'stopping': stopping,
@@ -413,7 +411,7 @@ def main(config, config_path, deadline=None):
             'run_id': run_id, 'status': status, 'epochs_completed': epoch_done,
             'best_epoch': best_epoch, 'best_val_mse': best_monitor, 'monitor_metric': 'val_mse',
             'final_lr': optimizer.param_groups[0]['lr'], 'train_hours': train_time_sec / 3600,
-            'n_params': n_params, 'residual': residual, 'finished': datetime.now().isoformat(),
+            'n_params': n_params, 'residual': residual, 'lambda': lam, 'finished': datetime.now().isoformat(),
         }
         write_json(summary, paths['summary.json'])
         print(f"[{run_id}] {status} after {epoch_done} epochs "

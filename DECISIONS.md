@@ -38,4 +38,15 @@ One line per decision not covered by the instructions, with the reason.
 - Checkpoints trained with the new option have their keys under `net.` (the wrapper); load them with `create_model(name, residual=<value in config.json>)`.
 - `RESIDUAL` has no default: a config without an explicit `true`/`false` is rejected, and the run name gets `_res` or `_nores`, so block D (ablation) can never land under a block A name.
 - SoFoNO builds its query grid with `ranges=(-1, 1)`, the same as SRNO, so its bilinear skip is also exactly the identity at s = 1 (max abs diff 0.0); both operators are therefore numerically unchanged with `residual=true`.
+- Thesis wording (ch. 4): SRNO and SoFoNO had a global skip and the CNNs didn't, but at s = 1 that skip is exactly x, so the residual vs non-residual comparison is clean.
 - `tests/test_residual.py` loads the model code of commit 6c5e0ff (before the change) from git and checks bit-identical outputs with the same weights: the 3 CNNs with `residual=false`, SRNO/SoFoNO with `residual=true`, and all 5 with `residual=None`; plus test (e) and a zeroed-output check that `residual=false` leaves no hidden skip.
+
+## 4.4 Loss MSE + lambda * LPIPS
+
+- The loss is `MseLpipsLoss` (`losses/losses.py`); `LOSS_MODE`/`LOSS_WEIGHTS` are no longer read by `train.py`, and `FluidCompositeLoss` stays only for old code. With lambda = 0 the LPIPS network is never built during training, and loss and gradients are bit-identical to the old MSE loss (tested).
+- LPIPS preprocessing lives in one function, `losses/lpips_utils.py:to_lpips_input` (component / 2.869149 m/s, repeated to 3 channels); `lpips_distance` averages LPIPS(u) and LPIPS(v). The training loss uses it now and the evaluation metric (4.5) must import the same function. Predictions are not clamped, so they may slightly exceed [-1, 1].
+- LPIPS backbone for training: VGG (`lpips` 0.1.4, v0.1 linear weights).
+- Validation LPIPS is computed and logged every epoch for every lambda (so lambda = 0 runs log it too); training LPIPS is only computed when lambda > 0 and is `nan` in the CSV otherwise.
+- Epoch means (train and validation) are now weighted by the number of samples; before, they were a plain mean over batches, which gave the smaller last batch extra weight.
+- `LAMBDA` has no default: a config without an explicit number >= 0 is rejected. It is part of the run name (`_lam<value>`, e.g. `_lam0`, `_lam0.01`) and is stored in `config.json` and `summary.json`.
+- The one-epoch magnitude check (`scripts/lpips_magnitude_check.py`) uses the batch sizes and learning rates used so far: 32 and 1e-4 for SRCNN/DSC-MS/PRUSR, 16 and 4e-5 for SRNO, 8 and 4e-5 for SoFoNO.

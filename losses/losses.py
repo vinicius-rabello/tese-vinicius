@@ -3,6 +3,7 @@ import torch.nn as nn
 import lpips
 # Adjust this import based on your exact folder structure
 from metrics.kinetic_energy_spectrum import KineticEnergySpectrumLoss, WeightedKineticEnergySpectrumLoss
+from losses.lpips_utils import build_lpips, lpips_distance
 
 class FluidCompositeLoss(nn.Module):
     """
@@ -61,3 +62,40 @@ class FluidCompositeLoss(nn.Module):
 
         metrics['total'] = total_loss.item()
         return total_loss, metrics
+
+class MseLpipsLoss(nn.Module):
+    """loss = MSE + lam * LPIPS, with LPIPS on the fixed-scale fields
+    (see losses/lpips_utils.py). With lam = 0 the LPIPS network is never
+    built and the loss is exactly nn.MSELoss.
+
+    forward() returns (loss, metrics). LPIPS is only computed when it enters
+    the loss (lam > 0) or when compute_lpips=True, which validation uses to
+    log it every epoch whatever lam is; otherwise metrics['lpips'] is NaN."""
+
+    def __init__(self, lam: float, lpips_scale: float, device, net: str = 'vgg'):
+        super().__init__()
+        self.lam = float(lam)
+        self.lpips_scale = float(lpips_scale)
+        self.net = net
+        self.device = device
+        self.mse = nn.MSELoss()
+        self._lpips_model = None
+
+    @property
+    def lpips_model(self):
+        # Built on first use, so a lam = 0 training loop never loads VGG.
+        if self._lpips_model is None:
+            self._lpips_model = build_lpips(self.net, self.device)
+        return self._lpips_model
+
+    def forward(self, pred, target, compute_lpips: bool = False):
+        l_mse = self.mse(pred, target)
+        metrics = {'mse': l_mse.item(), 'lpips': float('nan')}
+        total = l_mse
+        if self.lam > 0 or compute_lpips:
+            l_lpips = lpips_distance(self.lpips_model, pred, target, self.lpips_scale)
+            metrics['lpips'] = l_lpips.item()
+            if self.lam > 0:
+                total = l_mse + self.lam * l_lpips
+        metrics['total'] = total.item()
+        return total, metrics
