@@ -120,6 +120,12 @@ def evaluate(predict, constants, out_dir, loader, device, with_lpips=True, dates
                 'k_c': sm.effective_resolution_eps(sm.relative_spectral_error(pw['error'], pw['target'])),
                 'k_c_fase': sm.effective_resolution(rho),
             }
+            # Stricter threshold (eps <= 0.1) and censoring markers (1 = k_c hit
+            # the last shell, so it is only a lower bound).
+            eps_sample = sm.relative_spectral_error(pw['error'], pw['target'])
+            batch['k_c_01'] = sm.effective_resolution_eps(eps_sample, sm.K_C_THRESHOLDS['k_c_01'])
+            for name in ('k_c', 'k_c_01'):
+                batch[f'{name}_censurado'] = sm.k_c_censored(batch[name], eps_sample.shape[-1]).float()
             for b, name in enumerate(sm.BAND_NAMES):
                 batch[f'band_{name}'] = bands[:, b]
             batch['band_k_ge_D0'] = bands[:, 2:].sum(1)
@@ -161,12 +167,16 @@ def pooled_spectral(pred_power, target_power, error_power):
     p, t, e = pred_power.sum(0), target_power.sum(0), error_power.sum(0)
     T, eps = sm.transfer_ratio(p, t), sm.relative_spectral_error(e, t)
     high = torch.arange(1, len(t) + 1) >= sm.D0
-    return {
+    out = {
         'k_c': float(sm.effective_resolution_eps(eps)),
         'T_k': T.tolist(), 'eps_k': eps.tolist(),
         'T_k_ge_D0': float(T[high].mean()),
         'eps_k_ge_D0': float(e[high].sum() / t[high].sum()),
+        'k_c_01': float(sm.effective_resolution_eps(eps, sm.K_C_THRESHOLDS['k_c_01'])),
     }
+    for name in ('k_c', 'k_c_01'):
+        out[f'{name}_censurado'] = bool(sm.k_c_censored(out[name], len(eps)))
+    return out
 
 
 def training_constants():

@@ -176,6 +176,17 @@ def effective_resolution_eps(eps, threshold: float = 0.5):
     return first_above.float()
 
 
+# k_c thresholds on eps(k): 1/2 (the main k_c) and 0.1 (k_c_01, stricter;
+# separates models whose eps never reaches 1/2).
+K_C_THRESHOLDS = {'k_c': 0.5, 'k_c_01': 0.1}
+
+
+def k_c_censored(k_c, n_shells: int):
+    """True where k_c hit the last shell: eps never exceeded the threshold up
+    to the end of the spectrum, so the true k_c is only known to be >= n_shells."""
+    return k_c >= n_shells
+
+
 def spectral_slope(spectrum, k_min: float, k_max: float):
     """Least-squares slope of log E vs log k over k_min <= k <= k_max, per
     sample. The fitting range is set by the user (DECISIONS.md)."""

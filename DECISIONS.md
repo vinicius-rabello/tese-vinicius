@@ -164,3 +164,10 @@ One line per decision not covered by the instructions, with the reason.
 - Continuous-training control: an ordinary single-stage run with `FIXED_EPOCHS_FROM: [<stage-1 run>, <stage-2 run>]` trains exactly the sum of their measured `epochs_completed` (read from their `summary.json` at start; they must have finished), with no early stopping; `best.pt` still follows the validation MSE. Label `STAGE: control`.
 - `evaluate_run.load_model` rebuilds the chain from `config.json` (`train.load_run_model`), so every stage is evaluated like any run and reports its global, per-band and KE/WKE metrics for `y_hat(n)`.
 - The old `train_multistage.py` and `models/multistage.py` (untracked) are left as they are.
+
+## k_c: two thresholds and censoring (user decision, 2026-10-01)
+
+- Two effective resolutions from eps(k), same rule (largest k with eps(k') <= threshold for every k' <= k): `k_c` with threshold 1/2 (unchanged) and `k_c_01` with 0.1 (`spectral_metrics.K_C_THRESHOLDS`).
+- Censoring: when eps never exceeds the threshold up to the last shell, the value is the number of shells (63) and is only a lower bound. Markers `k_c_censurado` / `k_c_01_censurado`: per sample (1/0 in `metrics_per_sample.csv`), pooled (true/false in `eval_summary.json` and as the last columns of `all_runs.csv` / `baselines.csv`), `censurado` column (yes/no) in the `stats.py` tables for k_c rows, and A/B/A+B in comparisons (then the difference is only a bound). Reports print a censored value as `63+`.
+- All existing columns keep their names and positions; the new ones are appended at the end. Evaluations made before this have `k_c_01` and the pooled markers recomputed from `spectra.npz` by `collect_results.py` (the per-sample columns need a re-evaluation).
+- Pilot: SRNO and SoFoNO have k_c = 63+ after 2 epochs, but k_c_01 = 17-25; the CNNs 11-15.

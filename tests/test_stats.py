@@ -79,6 +79,10 @@ def main():
     e = np.where(np.arange(1, K + 1) <= 20, 0.1, 0.9) * t
     results.append(check("pooled k_c from shell sums: eps <= 1/2 up to k = 20 -> k_c = 20",
                          pooled_stats(p, t, e)['k_c'] == 20.0))
+    e2 = np.where(np.arange(1, K + 1) <= 30, 0.05, 0.3) * t
+    s2 = pooled_stats(p, t, e2)
+    results.append(check("two thresholds: eps 0.05 up to k = 30, 0.3 above -> k_c = 63 (censored), k_c_01 = 30",
+                         s2['k_c'] == 63.0 and s2['k_c_01'] == 30.0))
 
     with tempfile.TemporaryDirectory() as folder:
         res = os.path.join(folder, 'results')
@@ -117,6 +121,10 @@ def main():
                                  f"({float(row['mean_seeds']):.6g} +- {float(row['std_seeds']):.3g})"))
             kc = next(r for r in rows if r['config'] == 'srcnn, lambda 0, res' and r['metric'] == 'k_c')
             results.append(check("pooled k_c in main_results", float(kc['value']) == 20.0))
+            kc01 = next(r for r in rows if r['config'] == 'srcnn, lambda 0, res' and r['metric'] == 'k_c_01')
+            results.append(check("k_c_01 in main_results with the censoring column (k_c 20: not censored)",
+                                 float(kc01['value']) == 20.0 and kc['censurado'] == 'no'
+                                 and next(r for r in rows if r['metric'] == 'mse')['censurado'] == ''))
             comps = list(csv.DictReader(open(os.path.join(out, 'comparisons.csv'))))
             kinds = {c['comparison'] for c in comps}
             lam = next(c for c in comps if c['comparison'] == 'lambda_vs_mse' and c['metric'] == 'mse')

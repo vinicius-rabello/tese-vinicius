@@ -175,6 +175,27 @@ def main():
                              len(rows) == 9 and rows[1].split(',')[1] == '2022-01-01'
                              and npz['pred'].shape == (8, 63) and npz['rho'].shape == (8, 63),
                              f"(mean mse {summary['mse']:.3e}, psnr {summary['psnr']:.2f}, ssim {summary['ssim']:.4f})"))
+        header = rows[0].split(',')
+        summary_json = json.load(open(os.path.join(run_dir, 'eval_summary.json')))['pooled']
+        results.append(check("evaluation stores k_c_01 and the censoring markers (per sample and pooled), "
+                             "keeping the old columns",
+                             {'k_c', 'k_c_fase', 'k_c_01', 'k_c_censurado', 'k_c_01_censurado'} <= set(header)
+                             and {'k_c', 'k_c_01', 'k_c_censurado', 'k_c_01_censurado'} <= set(summary_json)))
+
+    # Two thresholds and censoring, on synthetic shell sums (63 shells).
+    t = torch.ones(5, 63)
+    k = torch.arange(1, 64)
+    e = torch.where(k <= 30, 0.05, 0.3) * t      # eps: 0.05 up to k = 30, 0.3 above
+    pooled = evaluate_run.pooled_spectral(t, t, e)
+    results.append(check("k_c (eps <= 1/2) censored at 63 while k_c_01 (eps <= 0.1) = 30, not censored",
+                         pooled['k_c'] == 63 and pooled['k_c_censurado'] is True
+                         and pooled['k_c_01'] == 30 and pooled['k_c_01_censurado'] is False,
+                         f"(k_c {pooled['k_c']:g}, k_c_01 {pooled['k_c_01']:g})"))
+    e = torch.where(k <= 20, 0.05, 0.9) * t
+    pooled = evaluate_run.pooled_spectral(t, t, e)
+    results.append(check("no censoring when eps crosses both thresholds: k_c = k_c_01 = 20",
+                         pooled['k_c'] == pooled['k_c_01'] == 20
+                         and not pooled['k_c_censurado'] and not pooled['k_c_01_censurado']))
 
     print(f"\n{sum(results)}/{len(results)} checks passed")
     return 0 if all(results) else 1

@@ -39,6 +39,11 @@ METRIC_COLS = ['mse', 'psnr', 'ssim', 'ke', 'wke', *BAND_COLS, 'e_banda_k_ge_D0'
 RUN_COLS = ['run_id', 'status', 'arquitetura', 'perda', 'lambda', 'semente', 'residual', 'ruido', 'estagio', 'epocas',
             'motivo_parada', 'tempo_treino_h', 'n_parametros', 'commit', 'arvore_limpa', 'R_psnr',
             'escala_lpips', *METRIC_COLS, 'best_val_mse']
+# Added at the end so the existing columns keep their positions: k_c with the
+# stricter threshold eps <= 0.1 (test set pooled), and censoring markers
+# (True = k_c reached the last shell, so the value is only a lower bound).
+K_C_EXTRA = ['k_c_01', 'k_c_censurado', 'k_c_01_censurado']
+RUN_COLS += K_C_EXTRA
 # Spectral-slope fitting range (k, cycles per domain), confirmed by the user
 # (proposal: scripts/propose_slope_range.py, target slope -2.11 over it).
 SLOPE_RANGE = (11, 46)
@@ -83,6 +88,7 @@ def test_means(run_dir):
     pooled = pooled_from_npz(run_dir)
     if pooled:
         out.update({'k_c': pooled['k_c'], 'T_k': pooled['T_k_ge_D0'], 'eps_k': pooled['eps_k_ge_D0']})
+        out.update({c: pooled[c] for c in K_C_EXTRA})
     for i, name in enumerate(BAND_NAMES):
         if col(f'band_{name}') is not None:
             out[BAND_COLS[i]] = float(np.mean(col(f'band_{name}')))
@@ -163,7 +169,7 @@ def run_row(run_id, run_dir):
         'escala_lpips': config.get('lpips_scale', ''),
         'best_val_mse': summary.get('best_val_mse', ''),
     }
-    for m in METRIC_COLS:
+    for m in METRIC_COLS + K_C_EXTRA:
         row[m] = ''
     row.update(test_means(run_dir))
     return row
@@ -395,6 +401,12 @@ def alerts(rows, results_dir):
     return out
 
 
+def fmt_kc(row, col):
+    """fmt, with a trailing + on a censored k_c / k_c_01."""
+    text = fmt(row.get(col, ''))
+    return text + '+' if col in ('k_c', 'k_c_01') and row.get(f'{col}_censurado') is True else text
+
+
 def write_report(rows, baseline_rows, alert_lines, figures, out_dir):
     lines = ["# Results report", ""]
     lines += ["## Alerts", ""] + ([f"- {a}" for a in alert_lines] or ["- none"]) + [""]
@@ -403,13 +415,15 @@ def write_report(rows, baseline_rows, alert_lines, figures, out_dir):
     lines += ["## Runs (test set, m/s, fixed R), sorted by MSE", ""]
     head = ['run_id', 'epocas', 'motivo_parada', 'mse', 'psnr', 'ssim', 'ke', 'wke', 'e_banda_k_ge_D0', 'k_c', 'k_c_fase',
             'eps_k',
-            'best_val_mse']
+            'best_val_mse', 'k_c_01']
+    lines += ["k_c: eps <= 1/2; k_c_01: eps <= 0.1; a trailing + marks a censored value (eps never exceeded the "
+              "threshold up to the last shell, so k_c is only a lower bound).", ""]
     lines += ["| " + " | ".join(head) + " |", "|" + "---|" * len(head)]
-    lines += ["| " + " | ".join(fmt(r[c]) for c in head) + " |" for r in done]
+    lines += ["| " + " | ".join(fmt_kc(r, c) for c in head) + " |" for r in done]
     if baseline_rows:
-        cols = ('ruido', 'mse', 'psnr', 'ssim', 'ke', 'wke', 'e_banda_k_ge_D0', 'k_c', 'k_c_fase', 'eps_k')
+        cols = ('ruido', 'mse', 'psnr', 'ssim', 'ke', 'wke', 'e_banda_k_ge_D0', 'k_c', 'k_c_fase', 'eps_k', 'k_c_01')
         lines += ["", "Baselines:", "", "| baseline | " + " | ".join(cols) + " |", "|---" * (len(cols) + 1) + "|"]
-        lines += [f"| {b['baseline']} | " + " | ".join(fmt(b[c]) for c in cols) + " |" for b in baseline_rows]
+        lines += [f"| {b['baseline']} | " + " | ".join(fmt_kc(b, c) for c in cols) + " |" for b in baseline_rows]
     if pending:
         lines += ["", "Not evaluated yet / incomplete: " + ", ".join(f"{r['run_id']} ({r['status']})" for r in pending)]
 
@@ -489,11 +503,12 @@ def main():
         if means:
             config = read_json(os.path.join(args.results_dir, folder, 'config.json')) or {}
             row = {'baseline': folder[len('baseline_'):], 'ruido': config.get('noise_std', 0.0),
-                   'gamma': config.get('gamma', ''), **{c: '' for c in METRIC_COLS}, **means}
+                   'gamma': config.get('gamma', ''), **{c: '' for c in METRIC_COLS + K_C_EXTRA}, **means}
             baseline_rows.append(row)
 
     write_csv(os.path.join(out_dir, 'all_runs.csv'), rows, RUN_COLS)
-    write_csv(os.path.join(out_dir, 'baselines.csv'), baseline_rows, ['baseline', 'ruido', 'gamma', *METRIC_COLS])
+    write_csv(os.path.join(out_dir, 'baselines.csv'), baseline_rows,
+              ['baseline', 'ruido', 'gamma', *METRIC_COLS, *K_C_EXTRA])
 
     groups = {}
     for r in rows:

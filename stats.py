@@ -37,7 +37,9 @@ from evaluation.spectral_metrics import BAND_NAMES, D0
 
 PER_SAMPLE = ['mse', 'psnr', 'ssim', 'ke', 'wke', *[f'band_{b}' for b in BAND_NAMES], 'band_k_ge_D0',
               'k_c_fase', 'lpips_vgg', 'lpips_alex']
-POOLED = ['k_c', 'eps_k_ge_D0', 'T_k_ge_D0']
+POOLED = ['k_c', 'eps_k_ge_D0', 'T_k_ge_D0', 'k_c_01']
+# k_c is censored when it reaches the last shell (eps never exceeded the threshold).
+K_C_METRICS = {'k_c': 0.5, 'k_c_01': 0.1}
 SLOPE = 'inclinacao_espectral'
 LOWER_IS_BETTER = {'mse', 'ke', 'wke', 'band_k_ge_D0', 'eps_k_ge_D0', 'lpips_vgg', 'lpips_alex',
                    *[f'band_{b}' for b in BAND_NAMES]}
@@ -117,10 +119,20 @@ def pooled_stats(pred, target, error):
     """Test-set k_c, eps over k >= D0 and mean T over k >= D0 from shell sums."""
     p, t, e = pred.sum(0), target.sum(0), error.sum(0)
     eps = e / t
-    above = np.flatnonzero(eps > 0.5)
-    k_c = float(above[0]) if len(above) else float(len(eps))
+    out = {}
+    for name, threshold in K_C_METRICS.items():
+        above = np.flatnonzero(eps > threshold)
+        out[name] = float(above[0]) if len(above) else float(len(eps))
     high = np.arange(1, len(t) + 1) >= D0
-    return {'k_c': k_c, 'eps_k_ge_D0': float(e[high].sum() / t[high].sum()), 'T_k_ge_D0': float((p / t)[high].mean())}
+    return {**out, 'eps_k_ge_D0': float(e[high].sum() / t[high].sum()), 'T_k_ge_D0': float((p / t)[high].mean())}
+
+
+def censored(metric, value, runs):
+    """'yes' when a k_c value sits at the last shell (only a lower bound)."""
+    if metric not in K_C_METRICS:
+        return ''
+    n_shells = next(iter(runs.values()))['powers']['target'].shape[-1]
+    return 'yes' if value >= n_shells else 'no'
 
 
 def slope_per_sample(spectrum, k_range):
@@ -163,7 +175,7 @@ def config_row(key, runs, metric, n_resamples, slope_range):
         value, lo, hi = mean_ci(day_series(runs, metric, slope_range), dates, 7, n_resamples)
     return {'config': label(key), 'metric': metric, 'n_seeds': len(runs), 'mean_seeds': float(np.mean(per_seed)),
             'std_seeds': float(np.std(per_seed, ddof=1)) if len(per_seed) > 1 else '',
-            'value': value, 'ci_lo': lo, 'ci_hi': hi}
+            'value': value, 'ci_lo': lo, 'ci_hi': hi, 'censurado': censored(metric, value, runs)}
 
 
 def compare(kind, key_a, runs_a, key_b, runs_b, metric, n_resamples, slope_range):
@@ -183,6 +195,13 @@ def compare(kind, key_a, runs_a, key_b, runs_b, metric, n_resamples, slope_range
                                    dates, days, n_resamples)
         out.update({'diff': diff, f'ci{days}_lo': lo, f'ci{days}_hi': hi})
     out['significant_7d'] = not (out['ci7_lo'] <= 0 <= out['ci7_hi'])
+    if metric in K_C_METRICS:
+        # Which side's k_c is censored (then the difference is only a bound).
+        sides = [s for s, k, r in (('A', key_a, runs_a), ('B', key_b, runs_b))
+                 if censored(metric, pooled_stats(*day_powers(r))[metric], r) == 'yes']
+        out['censurado'] = '+'.join(sides) or 'no'
+    else:
+        out['censurado'] = ''
     return out
 
 
@@ -258,9 +277,9 @@ def main():
                         key=lambda r: r['config'])
 
     os.makedirs(args.out, exist_ok=True)
-    main_cols = ['config', 'metric', 'n_seeds', 'mean_seeds', 'std_seeds', 'value', 'ci_lo', 'ci_hi']
+    main_cols = ['config', 'metric', 'n_seeds', 'mean_seeds', 'std_seeds', 'value', 'ci_lo', 'ci_hi', 'censurado']
     comp_cols = ['comparison', 'A', 'B', 'metric', 'better_if', 'diff', 'ci7_lo', 'ci7_hi', 'ci30_lo', 'ci30_hi',
-                 'significant_7d']
+                 'significant_7d', 'censurado']
     write_tables(main_rows, main_cols, os.path.join(args.out, 'main_results'))
     write_tables(comp_rows, comp_cols, os.path.join(args.out, 'comparisons'))
     write_tables([r for r in main_rows if r['metric'].startswith('band_')], main_cols, os.path.join(args.out, 'bands'))
