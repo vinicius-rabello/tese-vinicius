@@ -1,0 +1,8 @@
+# Phase 6: block E, multistage on the best architecture of block A; stage 1 is
+# A_<arch>_res_lam0_seed0 (already trained). Order matters: each stage needs the
+# previous one, and the control needs stage 2 finished.
+# Generate first: python scripts/make_block_e.py --arch <best arch of block A>
+configs/E/E_*_stage2_nores_lam0_seed0.yaml
+configs/E/E_*_stage3_nores_lam0_seed0.yaml
+configs/E/E_*_stage4_nores_lam0_seed0.yaml
+configs/E/E_*_control_res_lam*_seed0.yaml

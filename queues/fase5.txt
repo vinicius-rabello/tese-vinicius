@@ -1,0 +1,11 @@
+# Phase 5: block C seeds 1 and 2 (generated with phase 2).
+configs/C/C_srcnn_res_lam*_seed1.yaml
+configs/C/C_dscms_res_lam*_seed1.yaml
+configs/C/C_prusr_res_lam*_seed1.yaml
+configs/C/C_srno_res_lam*_seed1.yaml
+configs/C/C_sofono_res_lam*_seed1.yaml
+configs/C/C_srcnn_res_lam*_seed2.yaml
+configs/C/C_dscms_res_lam*_seed2.yaml
+configs/C/C_prusr_res_lam*_seed2.yaml
+configs/C/C_srno_res_lam*_seed2.yaml
+configs/C/C_sofono_res_lam*_seed2.yaml

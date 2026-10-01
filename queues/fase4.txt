@@ -1,0 +1,11 @@
+# Phase 4: block A seeds 1 and 2.
+configs/A/A_srcnn_res_lam0_seed1.yaml
+configs/A/A_dscms_res_lam0_seed1.yaml
+configs/A/A_prusr_res_lam0_seed1.yaml
+configs/A/A_srno_res_lam0_seed1.yaml
+configs/A/A_sofono_res_lam0_seed1.yaml
+configs/A/A_srcnn_res_lam0_seed2.yaml
+configs/A/A_dscms_res_lam0_seed2.yaml
+configs/A/A_prusr_res_lam0_seed2.yaml
+configs/A/A_srno_res_lam0_seed2.yaml
+configs/A/A_sofono_res_lam0_seed2.yaml

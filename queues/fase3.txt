@@ -1,0 +1,5 @@
+# Phase 3: block D, skip ablation (residual = false), reduced to SRCNN, DSC/MS, SRNO.
+# PRUSR and SoFoNO are in configs/D_optional/ and in no queue.
+configs/D/D_srcnn_nores_lam0_seed0.yaml
+configs/D/D_dscms_nores_lam0_seed0.yaml
+configs/D/D_srno_nores_lam0_seed0.yaml

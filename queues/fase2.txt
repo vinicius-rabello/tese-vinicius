@@ -1,0 +1,5 @@
+# Phase 2: block C seed 0 with the best lambda of B (SRCNN and SRNO seed 0 come from B).
+# Generate first: python scripts/make_block_c.py --lambda <best> --sweep-arch srno srcnn
+configs/C/C_dscms_res_lam*_seed0.yaml
+configs/C/C_prusr_res_lam*_seed0.yaml
+configs/C/C_sofono_res_lam*_seed0.yaml

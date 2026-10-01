@@ -1,0 +1,14 @@
+# Phase 7: regime B (sigma = 1e-2), only after the advisor's approval: 5 MSE,
+# 5 best lambda, and the lambda sweep on SRCNN (13 configs).
+# Generate first: python scripts/make_block_n.py --noise 0.01 --lambda <best> --sweep-arch srcnn
+# Baselines for sigma = 1e-2 are already in results/baseline_{identity,wiener}_noise0.01.
+configs/N/N_srcnn_res_lam0_noise0.01_seed0.yaml
+configs/N/N_dscms_res_lam0_noise0.01_seed0.yaml
+configs/N/N_prusr_res_lam0_noise0.01_seed0.yaml
+configs/N/N_srno_res_lam0_noise0.01_seed0.yaml
+configs/N/N_sofono_res_lam0_noise0.01_seed0.yaml
+configs/N/N_srcnn_res_lam*_noise0.01_seed0.yaml
+configs/N/N_dscms_res_lam*_noise0.01_seed0.yaml
+configs/N/N_prusr_res_lam*_noise0.01_seed0.yaml
+configs/N/N_srno_res_lam*_noise0.01_seed0.yaml
+configs/N/N_sofono_res_lam*_noise0.01_seed0.yaml

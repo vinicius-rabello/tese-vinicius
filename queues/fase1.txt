@@ -1,0 +1,15 @@
+# Phase 1: block A seed 0 (SRCNN, DSC/MS, PRUSR, SRNO, SoFoNO), then block B.
+configs/A/A_srcnn_res_lam0_seed0.yaml
+configs/A/A_dscms_res_lam0_seed0.yaml
+configs/A/A_prusr_res_lam0_seed0.yaml
+configs/A/A_srno_res_lam0_seed0.yaml
+configs/A/A_sofono_res_lam0_seed0.yaml
+# Block B: lambda sweep, SRCNN first (cheap), then SRNO; lambda ascending.
+configs/B/B_srcnn_res_lam0.001_seed0.yaml
+configs/B/B_srcnn_res_lam0.01_seed0.yaml
+configs/B/B_srcnn_res_lam0.1_seed0.yaml
+configs/B/B_srcnn_res_lam1_seed0.yaml
+configs/B/B_srno_res_lam0.001_seed0.yaml
+configs/B/B_srno_res_lam0.01_seed0.yaml
+configs/B/B_srno_res_lam0.1_seed0.yaml
+configs/B/B_srno_res_lam1_seed0.yaml
