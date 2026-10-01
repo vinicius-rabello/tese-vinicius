@@ -39,3 +39,7 @@ models/**/output/images/
 results/**/*.pt
 results/**/*.tmp
 results/**/images/
+# Pilot and short measurements: same rule as results/
+results_pilot/**/*.pt
+results_pilot/**/*.tmp
+results_pilot/**/images/
