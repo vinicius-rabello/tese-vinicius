@@ -19,6 +19,7 @@ from torch.utils.data import Subset
 from datasets.super_res_dataset import SuperResDataset, NOISE_SEED_OFFSET
 from losses.losses import MseLpipsLoss
 from utils import reproducibility as repro
+from models.stage_chain import StageChain
 
 class EarlyStopping:
     """Counts epochs without a significant improvement of the monitored metric.
@@ -225,6 +226,97 @@ def noise_std_value(config):
     return float(value)
 
 
+class NormalizedResidualLoss(nn.Module):
+    """Multistage training loss: MSE(y_hat(n-1) + eps * f_n, y) / eps^2, which
+    is exactly MSE(f_n(x), (y - y_hat(n-1)(x)) / eps), i.e. f_n is trained on
+    the normalized residual. The logged metrics stay in m/s (HR space)."""
+
+    def __init__(self, inner, epsilon):
+        super().__init__()
+        self.inner = inner
+        self.scale = 1.0 / float(epsilon) ** 2
+
+    def forward(self, outputs, target, **kwargs):
+        loss, metrics = self.inner(outputs, target, **kwargs)
+        return loss * self.scale, metrics
+
+
+def build_run_model(run_dir):
+    """Architecture of a finished run (no weights), following the multistage
+    chain recursively through config.json."""
+    meta = read_json(os.path.join(run_dir, 'config.json'))
+    model = create_model(meta['model'], in_channels=2, out_channels=2, residual=meta['residual'])
+    stage = meta.get('multistage')
+    if stage:
+        model = StageChain(build_run_model(stage['previous_run']), model, stage['epsilon'])
+    return model
+
+
+def load_run_model(run_dir):
+    """A finished run's model with its best.pt weights (CPU)."""
+    model = build_run_model(run_dir)
+    state = torch.load(os.path.join(run_dir, 'best.pt'), map_location='cpu', weights_only=False)['model_state_dict']
+    model.load_state_dict(state, strict=True)
+    return model
+
+
+def residual_rms(model, dataset, config):
+    """RMS of y - model(x) over a dataset (multistage epsilon)."""
+    loader = DataLoader(dataset, batch_size=config['BATCH_SIZE'], shuffle=False,
+                        num_workers=config['NUM_WORKERS'], worker_init_fn=repro.seed_worker)
+    model.eval()
+    sq_sum, count = 0.0, 0
+    with torch.no_grad():
+        for lr, hr in tqdm(loader, desc="epsilon"):
+            lr, hr = lr.to(config['DEVICE']), hr.to(config['DEVICE'])
+            sq_sum += ((hr - model(lr)) ** 2).double().sum().item()
+            count += hr.numel()
+    return (sq_sum / count) ** 0.5
+
+
+def multistage_setup(config, run_dir, stage_model, train_dataset, loader_generator):
+    """Stage n >= 2 (STAGE1_CHECKPOINT = best.pt of stage n-1): frozen chain
+    plus a fresh f_n without global skip, trained with lambda = 0 on the
+    normalized residual. epsilon is computed once and kept in config.json, so
+    a resumed run reuses it."""
+    checkpoint = config['STAGE1_CHECKPOINT']
+    previous_run = os.path.dirname(checkpoint)
+    if os.path.basename(checkpoint) != 'best.pt' or not os.path.exists(checkpoint):
+        raise ValueError(f"STAGE1_CHECKPOINT must be the best.pt of a finished run (got {checkpoint!r}).")
+    if residual_flag(config) or lambda_value(config) != 0:
+        raise ValueError("Multistage stages predict the normalized residual: they need RESIDUAL: false and LAMBDA: 0.")
+    previous_meta = read_json(os.path.join(previous_run, 'config.json'))
+    if previous_meta['model'] != config.get('MODEL_NAME', 'dscms').lower():
+        raise ValueError(f"Stage n-1 is {previous_meta['model']}, MODEL_NAME is {config.get('MODEL_NAME')}.")
+    base = load_run_model(previous_run).to(config['DEVICE'])
+
+    existing = os.path.join(run_dir, 'config.json')
+    if os.path.exists(existing) and read_json(existing).get('multistage'):
+        epsilon = read_json(existing)['multistage']['epsilon']
+    else:
+        # The extra pass must not shift the run's random streams.
+        state = repro.get_rng_state(loader_generator)
+        epsilon = residual_rms(base, train_dataset, config)
+        repro.set_rng_state(state, loader_generator)
+    print(f"Multistage: stage {config.get('STAGE', '?')} on {previous_run}, epsilon = {epsilon:.6g} m/s")
+    info = {'stage': config.get('STAGE'), 'previous_run': previous_run, 'previous_checkpoint': checkpoint,
+            'epsilon': epsilon, 'epsilon_definition': 'RMS of y - y_hat(n-1)(x) over the training set (u and v)',
+            'train_loss': 'MSE(f_n(x), (y - y_hat(n-1)(x)) / epsilon)'}
+    return StageChain(base, stage_model, epsilon), info
+
+
+def fixed_epochs(config):
+    """Continuous-training control: as many epochs as the listed runs trained
+    in total (their summary.json), with no early stopping."""
+    total = 0
+    for run in config['FIXED_EPOCHS_FROM']:
+        summary = read_json(os.path.join(run, 'summary.json'))
+        if summary.get('status') not in COMPLETED_STATUSES:
+            raise ValueError(f"FIXED_EPOCHS_FROM: {run} has not finished (status {summary.get('status')}).")
+        total += int(summary['epochs_completed'])
+    return total
+
+
 def run_id_for(config, config_path):
     name = config.get('RUN_NAME') or os.path.splitext(os.path.basename(config_path))[0]
     skip = 'res' if residual_flag(config) else 'nores'
@@ -357,6 +449,9 @@ def main(config, config_path, deadline=None):
     print(f"Initializing model: {upper_model}")
     residual = residual_flag(config)
     model = create_model(current_model, in_channels=2, out_channels=2, residual=residual)
+    multistage = None
+    if config.get('STAGE1_CHECKPOINT'):
+        model, multistage = multistage_setup(config, run_dir, model, train_dataset, loader_generator)
     n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     if torch.cuda.device_count() > 1:
         print(f"Using {torch.cuda.device_count()} GPUs!")
@@ -366,7 +461,9 @@ def main(config, config_path, deadline=None):
     lam = lambda_value(config)
     config['LAMBDA'] = lam
     criterion = MseLpipsLoss(lam, constants['lpips_scale'], device=config['DEVICE'], net='vgg')
-    optimizer = optim.Adam(model.parameters(), lr=config['LEARNING_RATE'], weight_decay=1e-4)
+    if multistage:
+        criterion = NormalizedResidualLoss(criterion, multistage['epsilon'])
+    optimizer = optim.Adam([p for p in model.parameters() if p.requires_grad], lr=config['LEARNING_RATE'], weight_decay=1e-4)
     scheduler = ReduceLROnPlateau(optimizer, mode='min', patience=5, factor=0.5)
 
     # Same stopping rule for every loss: relative improvement of the
@@ -379,6 +476,11 @@ def main(config, config_path, deadline=None):
         'min_epochs': int(config.get('MIN_EPOCHS', 50)),
         'max_epochs': int(config.get('MAX_EPOCHS', 300)),
     }
+    if config.get('FIXED_EPOCHS_FROM'):
+        n_epochs = fixed_epochs(config)
+        stopping.update({'min_epochs': n_epochs, 'max_epochs': n_epochs, 'patience': n_epochs + 1,
+                         'fixed_epochs_from': list(config['FIXED_EPOCHS_FROM'])})
+        print(f"Fixed length: {n_epochs} epochs (sum of {', '.join(config['FIXED_EPOCHS_FROM'])}).")
     if 'NUM_EPOCHS' in config:
         print(f"Note: NUM_EPOCHS is ignored; training runs {stopping['min_epochs']}-{stopping['max_epochs']} epochs.")
     early_stopper = EarlyStopping(patience=stopping['patience'], min_delta=stopping['relative_min_delta'],
@@ -404,6 +506,8 @@ def main(config, config_path, deadline=None):
                           'factor': 0.5, 'threshold': 1e-4, 'threshold_mode': 'rel'},
             **constants,
         }
+        if multistage:
+            meta['multistage'] = multistage
     write_json(meta, paths['config.json'])
 
     start_epoch, best_monitor, best_epoch, train_time_sec = 0, float('inf'), 0, 0.0

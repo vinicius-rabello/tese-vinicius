@@ -59,6 +59,10 @@ def load_model(run_dir, device):
     weights = os.path.join(run_dir, 'best.pt')
     if not os.path.exists(weights):
         raise RunConfigError(f"{weights} not found.")
+    if meta.get('multistage'):
+        # Stage n >= 2: the frozen chain of the previous stages plus f_n.
+        from train import load_run_model
+        return load_run_model(run_dir).to(device).eval(), meta
     model = create_model(meta['model'], in_channels=2, out_channels=2, residual=meta['residual'])
     state = torch.load(weights, map_location='cpu', weights_only=False)['model_state_dict']
     model.load_state_dict(state, strict=True)
