@@ -77,7 +77,10 @@ def run_dir_of(config_path):
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('queue')
-    parser.add_argument('--max-hours', type=float, default=70)
+    parser.add_argument('--max-hours', type=float, default=70,
+                        help="wall-clock budget for training, passed to train.py (default 70 for a 72 h block; "
+                             "e.g. 27 for a shorter slot). A run can overrun by up to one epoch (~5 min); the "
+                             "test-set evaluation afterwards takes ~20 s per run.")
     parser.add_argument('--dry-run', action='store_true', help="only resolve and print the queue")
     parser.add_argument('--no-eval', action='store_true')
     args = parser.parse_args()

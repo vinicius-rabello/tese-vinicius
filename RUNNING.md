@@ -36,13 +36,14 @@ The symlinks are untracked, so the clean-tree guard of `train.py` still passes. 
 
 ## 3. Launching a queue
 
-One tmux session per queue, `--max-hours 70` (a 72 h lab block with 2 h of margin):
+One tmux session per queue, with `--max-hours` set to the time available (70 for a 72 h lab block, leaving 2 h of margin):
 
 ```bash
 cd /home/lcadame/Vinicius_Thesis/Vinicius_campanha
 tmux new -d -s fase1 "source venv/bin/activate && python scripts/run_queue.py queues/fase1.txt --max-hours 70 2>&1 | tee -a logs/fase1.log"
 ```
 
+- **Budget:** `--max-hours <h>` is passed to `train.py`, which stops cleanly before an epoch that would cross it. Use 70 for a 72 h block and less for a shorter slot, e.g. `--max-hours 27` for a 27 h window. The check happens after each epoch, so a run that starts right before the deadline can overrun by up to one epoch plus data loading (at most ~5 min, SoFoNO). The test-set evaluation of the finished runs comes after the budget (~20 s per run in the pilot). Leave ~15 min of margin. Omitting the option means 70.
 - Session: `fase1`. Log: `/home/lcadame/Vinicius_Thesis/Vinicius_campanha/logs/fase1.log`. Follow with `tail -f`, or `tmux attach -t fase1` (detach: Ctrl-b d).
 - **Next 72 h block:** relaunch the same command. Finished runs are skipped, an interrupted run resumes from its `last.pt`, and finished runs that have not been evaluated get their test-set evaluation at the end.
 - One queue at a time on the GPU. SRNO and SoFoNO use ~13 GB of the 16 GB, so no other GPU job during the campaign, including development tests in the main folder.
