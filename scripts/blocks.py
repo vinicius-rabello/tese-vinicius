@@ -22,6 +22,33 @@ CONFIG_ROOT = os.environ.get(
     "BLOCK_CONFIG_ROOT", os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "configs"))
 
 
+# Lambda families (DECISIONS.md, selection rules): if the SRCNN and SRNO sweeps
+# choose different lambdas, SRCNN's holds for the CNNs and SRNO's for the operators.
+FAMILIES = {"cnn": ("srcnn", "dscms", "prusr"), "op": ("srno", "sofono")}
+
+
+def add_lambda_arguments(parser):
+    """--lambda <v> (one lambda for every architecture) or --lambda-cnn <v>
+    --lambda-op <v> (one per family)."""
+    parser.add_argument("--lambda", dest="lam", type=float, help="chosen lambda (> 0), all architectures")
+    parser.add_argument("--lambda-cnn", type=float, help="chosen lambda for SRCNN, DSC/MS, PRUSR")
+    parser.add_argument("--lambda-op", type=float, help="chosen lambda for SRNO, SoFoNO")
+
+
+def lambdas_per_arch(args, parser):
+    """{arch: lambda} from add_lambda_arguments' options (parser.error otherwise)."""
+    family = (args.lambda_cnn, args.lambda_op)
+    if args.lam is not None and any(v is not None for v in family):
+        parser.error("give either --lambda or --lambda-cnn and --lambda-op, not both")
+    if args.lam is None and None in family:
+        parser.error("give --lambda, or both --lambda-cnn and --lambda-op")
+    per_arch = ({a: args.lam for a in ARCHS} if args.lam is not None else
+                {a: lam for fam, lam in zip(("cnn", "op"), family) for a in FAMILIES[fam]})
+    if any(lam <= 0 for lam in per_arch.values()):
+        parser.error("the chosen lambda must be > 0")
+    return per_arch
+
+
 def lam_tag(lam: float) -> str:
     return f"{lam:g}"
 

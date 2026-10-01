@@ -9,6 +9,10 @@ grid of block B by default). The campaign (user decision, 2026-10-01) uses
 `--noise 0.01 --lambda <best> --sweep-arch srcnn`: 10 + 4 runs, of which the
 SRCNN run with the best lambda is the same file in both lists, so 13 configs.
 Only after the advisor's approval.
+
+Regime B reuses the lambda(s) chosen in regime A (DECISIONS.md, selection
+rules): --lambda, or --lambda-cnn / --lambda-op when the families differ. The
+SRCNN sweep with noise is only a sensitivity analysis, never used to choose.
 """
 
 import argparse
@@ -16,22 +20,22 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from blocks import ARCHS, write_config  # noqa: E402
+from blocks import ARCHS, add_lambda_arguments, lambdas_per_arch, write_config  # noqa: E402
 
 LAMBDA_GRID = (1e-3, 1e-2, 1e-1, 1.0)  # block B grid (user decision)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--noise", required=True, type=float, help="NOISE_STD in m/s (> 0)")
-    parser.add_argument("--lambda", dest="lam", required=True, type=float, help="chosen lambda (> 0)")
+    add_lambda_arguments(parser)
     parser.add_argument("--sweep-arch", choices=ARCHS, help="also run the lambda sweep with noise on this architecture")
     parser.add_argument("--sweep-lambdas", nargs="+", type=float, default=list(LAMBDA_GRID))
     args = parser.parse_args()
     if args.noise <= 0:
         parser.error("the noisy regime needs --noise > 0 (sigma = 0 is blocks A-C)")
-    if args.lam <= 0:
-        parser.error("--lambda is the chosen lambda > 0; the MSE runs (lambda = 0) are generated automatically")
-    paths = [write_config("N", arch, lam, True, 0, noise=args.noise) for lam in (0.0, args.lam) for arch in ARCHS]
+    best = lambdas_per_arch(args, parser)  # the MSE runs (lambda = 0) are generated automatically
+    paths = [write_config("N", arch, lam, True, 0, noise=args.noise)
+             for lam_of in ({a: 0.0 for a in ARCHS}, best) for arch, lam in lam_of.items()]
     if args.sweep_arch:
         for lam in args.sweep_lambdas:
             path = write_config("N", args.sweep_arch, lam, True, 0, noise=args.noise)
