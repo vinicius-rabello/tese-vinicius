@@ -5,7 +5,7 @@ Seconds per epoch (train + validation with LPIPS logging):
   srno    lambda=0:   179.4   lambda>0:   206.6
   sofono  lambda=0:   242.9   lambda>0:   276.4
 
-GPU-hours per run (50 / 150 / 300 epochs):
+GPU-hours per run (50 ep / 150 ep / 300 ep):
   srcnn   lambda=0:   0.09 /   0.26 /   0.52
   srcnn   lambda>0:   0.44 /   1.33 /   2.65
   dscms   lambda=0:   0.29 /   0.86 /   1.71
@@ -17,25 +17,27 @@ GPU-hours per run (50 / 150 / 300 epochs):
   sofono  lambda=0:   3.37 /  10.12 /  20.24
   sofono  lambda>0:   3.84 /  11.52 /  23.03
 
-block                                                                  runs   50 ep  150 ep  300 ep   (GPU-hours)
-A  (5 archs x 3 seeds, MSE)                                              15    23.0    68.9   137.9
-B  (lambda sweep: 4 x SRNO + 4 x SRCNN)                                   8    13.2    39.7    79.5
-C  (best lambda, 5 archs x 3 seeds, minus SRNO/SRCNN seed 0 from B)      13    25.4    76.2   152.4
-D  (residual=false, 5 archs, MSE, seed 0)                                 5     7.7    23.0    46.0
-N  (regime B, sigma=1e-2, 13 runs: 5 MSE + lambda sweep 4 x SRNO + 4 x SRCNN)   13    20.9    62.7   125.4
-E  if best arch = srcnn (stages 2-4 + control)                            4     0.6     1.9     3.8
-E  if best arch = dscms (stages 2-4 + control)                            4     2.1     6.2    12.5
-E  if best arch = prusr (stages 2-4 + control)                            4    10.4    31.1    62.1
-E  if best arch = srno (stages 2-4 + control)                             4    18.1    54.4   108.8
-E  if best arch = sofono (stages 2-4 + control)                           4    24.6    73.7   147.4
+block                                                                    runs   50 ep  150 ep  300 ep   (GPU-hours)
+A  (5 archs x 3 seeds, MSE)                                                15    23.0    68.9   137.9
+B  (lambda sweep: 4 x SRNO + 4 x SRCNN)                                     8    13.2    39.7    79.5
+C  (best lambda, 5 archs x 3 seeds, minus SRNO/SRCNN seed 0 from B)        13    25.4    76.2   152.4
+D  (residual=false: SRCNN, DSC/MS, SRNO; MSE, seed 0)                       3     2.9     8.6    17.2
+N  (regime B, sigma=1e-2: 5 MSE + 5 best lambda + 3 SRCNN sweep)           13    18.6    55.7   111.3
+E  (stages 2-4 + control), arch = srcnn                                     4     0.6     1.9     3.8
+E  (stages 2-4 + control), arch = dscms                                     4     2.1     6.2    12.5
+E  (stages 2-4 + control), arch = prusr                                     4    10.4    31.1    62.1
+E  (stages 2-4 + control), arch = srno                                      4    18.1    54.4   108.8
+E  (stages 2-4 + control), arch = sofono                                    4    24.6    73.7   147.4
 
-Total A+B+C+D+N                                                                90.2   270.5   541.1
-Total with E (cheapest .. most expensive best arch)                         91-115 272-344 545-688
-N10 (regime B as make_block_n.py: 5 MSE + 5 best lambda; reference, not in the total)   10    17.2    51.7   103.4
+Total A+B+C+D+N                                                                  83.0   249.1   498.2
+Total with E (cheapest .. most expensive arch)                                84-108 251-323 502-646
+D_optional (PRUSR, SoFoNO; not counted)                                     2     4.8    14.4    28.8
 
-Budget rule (above ~250 h): proposed cuts, NOT applied
-A  cut: PRUSR with 2 seeds (saves 1 run)                                 -1    -1.4    -4.3    -8.5
-C  cut: PRUSR with 2 seeds (saves 1 run)                                 -1    -1.8    -5.3   -10.7
-D  cut: ablation only on SRCNN and DSC/MS (saves 3 runs)                 -3    -7.3   -21.9   -43.7
-Total A+B+C+D+N after the cuts                                                 79.7   239.1   478.2
-Total with E after the cuts                                                 80-104 241-313 482-626
+Queues (queues/*.txt, each launched with --max-hours 70), 150 epochs:
+  fase1: A seed 0, then B                       13 runs    62.7 h  -> 1 x 70 h
+  fase2: C seed 0                                3 runs    18.8 h  -> 1 x 70 h
+  fase3: D (reduced)                             3 runs     8.6 h  -> 1 x 70 h
+  fase4: A seeds 1-2                            10 runs    46.0 h  -> 1 x 70 h
+  fase5: C seeds 1-2                            10 runs    57.4 h  -> 1 x 70 h
+  fase6: E                                       4 runs    73.7 h  -> 2 x 70 h (most expensive arch)
+  fase7: regime B (after the advisor)           13 runs    55.7 h  -> 1 x 70 h
