@@ -1,0 +1,13 @@
+# Stage-2 (multistage residual) training on top of the SoFoNO mse_lpips_ke checkpoint.
+# Stage 2 always trains against the normalized residual with plain MSE,
+# regardless of which loss strategy stage 1 used -- see train_multistage.py.
+
+MODEL_NAME: "sofono"
+STAGE1_CHECKPOINT: "models/SoFoNO/test_composite_loss_mse_lpips_ke_0.6_0.2_0.2/18_08_2026_213017/output/weights/SOFONO_best.pth"
+ROOT_FOLDER: "models/SoFoNO/test_composite_loss_mse_lpips_ke_0.6_0.2_0.2_multistage/"
+DEVICE: "cuda"
+NUM_WORKERS: 4
+
+BATCH_SIZE: 8
+NUM_EPOCHS: 500
+LEARNING_RATE: 0.00004

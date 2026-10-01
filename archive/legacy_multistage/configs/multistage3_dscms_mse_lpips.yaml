@@ -1,0 +1,18 @@
+# Stage-3 multistage: builds on top of the existing 2-stage DSCMS mse_lpips
+# checkpoint (itself stage1=mse_lpips + stage2 mse-trained, the
+# better-performing loss-norm variant for this model/strategy). load_stage1()
+# in train_multistage.py detects that STAGE1_CHECKPOINT is itself a multistage
+# checkpoint and recursively reconstructs the frozen 2-stage model as the base
+# -- no code path needed beyond that; this is a normal train_multistage.py config.
+# Stage 3 trains a fresh third copy of the architecture against the residual
+# of the FROZEN 2-stage model, same MSE convention as every other stage.
+
+MODEL_NAME: "dscms"
+STAGE1_CHECKPOINT: "models/DSCMS/test_composite_loss_mse_lpips_0.6_0.4_multistage/08_09_2026_164441/output/weights/DSCMS_best.pth"
+ROOT_FOLDER: "models/DSCMS/test_composite_loss_mse_lpips_0.6_0.4_multistage3/"
+DEVICE: "cuda"
+NUM_WORKERS: 4
+
+BATCH_SIZE: 32
+NUM_EPOCHS: 500
+LEARNING_RATE: 0.0001

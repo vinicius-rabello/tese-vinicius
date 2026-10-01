@@ -1,0 +1,144 @@
+[Duration: 7.9s | Total Duration: 0.00h] Epoch [1/500] | LR: 0.000100
+  Train -> Residual loss: 0.992993 | Final MSE: 0.001052
+  Val   -> Residual loss: 1.007182 | Final MSE: 0.001067
+----------------------------------------------------------------------
+[Duration: 7.8s | Total Duration: 0.00h] Epoch [2/500] | LR: 0.000100
+  Train -> Residual loss: 0.987467 | Final MSE: 0.001046
+  Val   -> Residual loss: 0.997836 | Final MSE: 0.001057
+----------------------------------------------------------------------
+[Duration: 7.8s | Total Duration: 0.01h] Epoch [3/500] | LR: 0.000100
+  Train -> Residual loss: 0.972977 | Final MSE: 0.001031
+  Val   -> Residual loss: 0.979129 | Final MSE: 0.001038
+----------------------------------------------------------------------
+[Duration: 7.8s | Total Duration: 0.01h] Epoch [4/500] | LR: 0.000100
+  Train -> Residual loss: 0.949625 | Final MSE: 0.001006
+  Val   -> Residual loss: 0.953570 | Final MSE: 0.001011
+----------------------------------------------------------------------
+[Duration: 7.8s | Total Duration: 0.01h] Epoch [5/500] | LR: 0.000100
+  Train -> Residual loss: 0.924409 | Final MSE: 0.000980
+  Val   -> Residual loss: 0.927124 | Final MSE: 0.000983
+----------------------------------------------------------------------
+[Duration: 7.8s | Total Duration: 0.01h] Epoch [6/500] | LR: 0.000100
+  Train -> Residual loss: 0.900627 | Final MSE: 0.000954
+  Val   -> Residual loss: 0.906431 | Final MSE: 0.000961
+----------------------------------------------------------------------
+[Duration: 7.8s | Total Duration: 0.02h] Epoch [7/500] | LR: 0.000100
+  Train -> Residual loss: 0.882533 | Final MSE: 0.000935
+  Val   -> Residual loss: 0.887793 | Final MSE: 0.000941
+----------------------------------------------------------------------
+[Duration: 7.8s | Total Duration: 0.02h] Epoch [8/500] | LR: 0.000100
+  Train -> Residual loss: 0.861381 | Final MSE: 0.000913
+  Val   -> Residual loss: 0.868217 | Final MSE: 0.000920
+----------------------------------------------------------------------
+[Duration: 7.8s | Total Duration: 0.02h] Epoch [9/500] | LR: 0.000100
+  Train -> Residual loss: 0.844048 | Final MSE: 0.000895
+  Val   -> Residual loss: 0.850572 | Final MSE: 0.000901
+----------------------------------------------------------------------
+[Duration: 8.2s | Total Duration: 0.02h] Epoch [10/500] | LR: 0.000100
+  Train -> Residual loss: 0.827716 | Final MSE: 0.000877
+  Val   -> Residual loss: 0.834180 | Final MSE: 0.000884
+----------------------------------------------------------------------
+[Duration: 7.8s | Total Duration: 0.02h] Epoch [11/500] | LR: 0.000100
+  Train -> Residual loss: 0.810947 | Final MSE: 0.000859
+  Val   -> Residual loss: 0.817837 | Final MSE: 0.000867
+----------------------------------------------------------------------
+[Duration: 7.8s | Total Duration: 0.03h] Epoch [12/500] | LR: 0.000100
+  Train -> Residual loss: 0.795816 | Final MSE: 0.000843
+  Val   -> Residual loss: 0.803105 | Final MSE: 0.000851
+----------------------------------------------------------------------
+[Duration: 7.8s | Total Duration: 0.03h] Epoch [13/500] | LR: 0.000100
+  Train -> Residual loss: 0.780757 | Final MSE: 0.000827
+  Val   -> Residual loss: 0.788447 | Final MSE: 0.000836
+----------------------------------------------------------------------
+[Duration: 7.8s | Total Duration: 0.03h] Epoch [14/500] | LR: 0.000100
+  Train -> Residual loss: 0.767647 | Final MSE: 0.000814
+  Val   -> Residual loss: 0.774467 | Final MSE: 0.000821
+----------------------------------------------------------------------
+[Duration: 7.9s | Total Duration: 0.03h] Epoch [15/500] | LR: 0.000100
+  Train -> Residual loss: 0.754741 | Final MSE: 0.000800
+  Val   -> Residual loss: 0.762325 | Final MSE: 0.000808
+----------------------------------------------------------------------
+[Duration: 7.8s | Total Duration: 0.03h] Epoch [16/500] | LR: 0.000100
+  Train -> Residual loss: 0.743046 | Final MSE: 0.000787
+  Val   -> Residual loss: 0.750546 | Final MSE: 0.000795
+----------------------------------------------------------------------
+[Duration: 7.9s | Total Duration: 0.04h] Epoch [17/500] | LR: 0.000100
+  Train -> Residual loss: 0.731853 | Final MSE: 0.000776
+  Val   -> Residual loss: 0.740231 | Final MSE: 0.000784
+----------------------------------------------------------------------
+[Duration: 7.8s | Total Duration: 0.04h] Epoch [18/500] | LR: 0.000100
+  Train -> Residual loss: 0.722337 | Final MSE: 0.000766
+  Val   -> Residual loss: 0.731807 | Final MSE: 0.000776
+----------------------------------------------------------------------
+[Duration: 7.9s | Total Duration: 0.04h] Epoch [19/500] | LR: 0.000100
+  Train -> Residual loss: 0.713269 | Final MSE: 0.000756
+  Val   -> Residual loss: 0.722007 | Final MSE: 0.000765
+----------------------------------------------------------------------
+[Duration: 8.3s | Total Duration: 0.04h] Epoch [20/500] | LR: 0.000100
+  Train -> Residual loss: 0.704364 | Final MSE: 0.000746
+  Val   -> Residual loss: 0.713676 | Final MSE: 0.000756
+----------------------------------------------------------------------
+[Duration: 7.9s | Total Duration: 0.05h] Epoch [21/500] | LR: 0.000100
+  Train -> Residual loss: 0.697176 | Final MSE: 0.000739
+  Val   -> Residual loss: 0.706469 | Final MSE: 0.000749
+----------------------------------------------------------------------
+[Duration: 7.9s | Total Duration: 0.05h] Epoch [22/500] | LR: 0.000100
+  Train -> Residual loss: 0.689097 | Final MSE: 0.000730
+  Val   -> Residual loss: 0.698560 | Final MSE: 0.000740
+----------------------------------------------------------------------
+[Duration: 7.9s | Total Duration: 0.05h] Epoch [23/500] | LR: 0.000100
+  Train -> Residual loss: 0.683087 | Final MSE: 0.000724
+  Val   -> Residual loss: 0.692395 | Final MSE: 0.000734
+----------------------------------------------------------------------
+[Duration: 7.9s | Total Duration: 0.05h] Epoch [24/500] | LR: 0.000100
+  Train -> Residual loss: 0.676658 | Final MSE: 0.000717
+  Val   -> Residual loss: 0.686266 | Final MSE: 0.000727
+----------------------------------------------------------------------
+[Duration: 7.9s | Total Duration: 0.05h] Epoch [25/500] | LR: 0.000100
+  Train -> Residual loss: 0.671059 | Final MSE: 0.000711
+  Val   -> Residual loss: 0.681018 | Final MSE: 0.000722
+----------------------------------------------------------------------
+[Duration: 7.9s | Total Duration: 0.06h] Epoch [26/500] | LR: 0.000100
+  Train -> Residual loss: 0.665590 | Final MSE: 0.000705
+  Val   -> Residual loss: 0.675037 | Final MSE: 0.000715
+----------------------------------------------------------------------
+[Duration: 7.9s | Total Duration: 0.06h] Epoch [27/500] | LR: 0.000100
+  Train -> Residual loss: 0.659860 | Final MSE: 0.000699
+  Val   -> Residual loss: 0.668821 | Final MSE: 0.000709
+----------------------------------------------------------------------
+[Duration: 7.9s | Total Duration: 0.06h] Epoch [28/500] | LR: 0.000100
+  Train -> Residual loss: 0.654465 | Final MSE: 0.000694
+  Val   -> Residual loss: 0.664322 | Final MSE: 0.000704
+----------------------------------------------------------------------
+[Duration: 7.9s | Total Duration: 0.06h] Epoch [29/500] | LR: 0.000100
+  Train -> Residual loss: 0.649456 | Final MSE: 0.000688
+  Val   -> Residual loss: 0.658379 | Final MSE: 0.000698
+----------------------------------------------------------------------
+[Duration: 8.3s | Total Duration: 0.07h] Epoch [30/500] | LR: 0.000100
+  Train -> Residual loss: 0.644508 | Final MSE: 0.000683
+  Val   -> Residual loss: 0.653813 | Final MSE: 0.000693
+----------------------------------------------------------------------
+[Duration: 7.9s | Total Duration: 0.07h] Epoch [31/500] | LR: 0.000100
+  Train -> Residual loss: 0.640091 | Final MSE: 0.000678
+  Val   -> Residual loss: 0.654286 | Final MSE: 0.000693
+----------------------------------------------------------------------
+[Duration: 7.9s | Total Duration: 0.07h] Epoch [32/500] | LR: 0.000100
+  Train -> Residual loss: 0.636062 | Final MSE: 0.000674
+  Val   -> Residual loss: 0.645353 | Final MSE: 0.000684
+----------------------------------------------------------------------
+[Duration: 7.9s | Total Duration: 0.07h] Epoch [33/500] | LR: 0.000100
+  Train -> Residual loss: 0.631354 | Final MSE: 0.000669
+  Val   -> Residual loss: 0.640860 | Final MSE: 0.000679
+----------------------------------------------------------------------
+[Duration: 7.9s | Total Duration: 0.07h] Epoch [34/500] | LR: 0.000100
+  Train -> Residual loss: 0.627278 | Final MSE: 0.000665
+  Val   -> Residual loss: 0.636931 | Final MSE: 0.000675
+----------------------------------------------------------------------
+[Duration: 7.9s | Total Duration: 0.08h] Epoch [35/500] | LR: 0.000100
+  Train -> Residual loss: 0.623884 | Final MSE: 0.000661
+  Val   -> Residual loss: 0.633455 | Final MSE: 0.000671
+----------------------------------------------------------------------
+[Duration: 7.9s | Total Duration: 0.08h] Epoch [36/500] | LR: 0.000100
+  Train -> Residual loss: 0.620259 | Final MSE: 0.000657
+  Val   -> Residual loss: 0.628907 | Final MSE: 0.000666
+----------------------------------------------------------------------

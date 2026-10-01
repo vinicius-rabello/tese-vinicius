@@ -1,0 +1,13 @@
+# Stage-2 (multistage residual) training on top of the SRCNN mse_lpips checkpoint.
+# Stage 2 always trains against the normalized residual with plain MSE,
+# regardless of which loss strategy stage 1 used -- see train_multistage.py.
+
+MODEL_NAME: "srcnn"
+STAGE1_CHECKPOINT: "models/SRCNN/test_composite_loss_mse_lpips_0.6_0.4_05_08_2026/output/weights/SRCNN_best.pth"
+ROOT_FOLDER: "models/SRCNN/test_composite_loss_mse_lpips_0.6_0.4_multistage/"
+DEVICE: "cuda"
+NUM_WORKERS: 4
+
+BATCH_SIZE: 32
+NUM_EPOCHS: 500
+LEARNING_RATE: 0.0001

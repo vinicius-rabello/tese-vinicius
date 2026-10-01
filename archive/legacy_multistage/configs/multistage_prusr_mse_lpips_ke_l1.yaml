@@ -1,0 +1,17 @@
+# Stage-2 (multistage residual) training on top of the PRUSR mse_lpips_ke checkpoint.
+# Stage 2 trains against the normalized residual using an L1 (not MSE) loss --
+# see train_multistage.py's STAGE2_LOSS_NORM. Checkpoint selection/scheduling
+# still uses the fixed MSE "final_mse" metric, so this is directly comparable
+# to the MSE-trained multistage_prusr_mse_lpips_ke.yaml counterpart.
+
+MODEL_NAME: "prusr"
+STAGE1_CHECKPOINT: "models/PRUSR/test_composite_loss_mse_lpips_ke_0.6_0.2_0.2_05_08_2026/output/weights/PRUSR_best.pth"
+ROOT_FOLDER: "models/PRUSR/test_composite_loss_mse_lpips_ke_0.6_0.2_0.2_multistage_l1/"
+DEVICE: "cuda"
+NUM_WORKERS: 4
+
+STAGE2_LOSS_NORM: "l1"
+
+BATCH_SIZE: 32
+NUM_EPOCHS: 500
+LEARNING_RATE: 0.0001

@@ -1,0 +1,17 @@
+# Stage-2 (multistage residual) training on top of the SRNO mse checkpoint.
+# Stage 2 trains against the normalized residual using an L1 (not MSE) loss --
+# see train_multistage.py's STAGE2_LOSS_NORM. Checkpoint selection/scheduling
+# still uses the fixed MSE "final_mse" metric, so this is directly comparable
+# to the MSE-trained multistage_srno_mse.yaml counterpart.
+
+MODEL_NAME: "srno"
+STAGE1_CHECKPOINT: "models/SRNO/test_composite_loss_mse/17_08_2026_214640/output/weights/SRNO_best.pth"
+ROOT_FOLDER: "models/SRNO/test_composite_loss_mse_multistage_l1/"
+DEVICE: "cuda"
+NUM_WORKERS: 4
+
+STAGE2_LOSS_NORM: "l1"
+
+BATCH_SIZE: 16
+NUM_EPOCHS: 500
+LEARNING_RATE: 0.00004

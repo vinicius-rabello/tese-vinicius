@@ -1,0 +1,13 @@
+# Stage-2 (multistage residual) training on top of the DSCMS mse_lpips_ke checkpoint.
+# Stage 2 always trains against the normalized residual with plain MSE,
+# regardless of which loss strategy stage 1 used -- see train_multistage.py.
+
+MODEL_NAME: "dscms"
+STAGE1_CHECKPOINT: "models/DSCMS/test_composite_loss_mse_lpips_ke_0.6_0.2_0.2_05_08_2026/output/weights/DSCMS_best.pth"
+ROOT_FOLDER: "models/DSCMS/test_composite_loss_mse_lpips_ke_0.6_0.2_0.2_multistage/"
+DEVICE: "cuda"
+NUM_WORKERS: 4
+
+BATCH_SIZE: 32
+NUM_EPOCHS: 500
+LEARNING_RATE: 0.0001

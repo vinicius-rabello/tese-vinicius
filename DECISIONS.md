@@ -171,3 +171,7 @@ One line per decision not covered by the instructions, with the reason.
 - Censoring: when eps never exceeds the threshold up to the last shell, the value is the number of shells (63) and is only a lower bound. Markers `k_c_censurado` / `k_c_01_censurado`: per sample (1/0 in `metrics_per_sample.csv`), pooled (true/false in `eval_summary.json` and as the last columns of `all_runs.csv` / `baselines.csv`), `censurado` column (yes/no) in the `stats.py` tables for k_c rows, and A/B/A+B in comparisons (then the difference is only a bound). Reports print a censored value as `63+`.
 - All existing columns keep their names and positions; the new ones are appended at the end. Evaluations made before this have `k_c_01` and the pooled markers recomputed from `spectra.npz` by `collect_results.py` (the per-sample columns need a re-evaluation).
 - Pilot: SRNO and SoFoNO have k_c = 63+ after 2 epochs, but k_c_01 = 17-25; the CNNs 11-15.
+
+## Legacy multistage archived (user decision, 2026-10-01)
+
+- `train_multistage.py`, `models/multistage.py`, `configs/multistage*.yaml`, the multistage notebooks/CSVs/report and the old run folders `models/*/test_composite_loss_*_multistage*/` were moved (not deleted) to `archive/legacy_multistage/` with their relative paths and committed, with a README saying they are not part of the campaign. Their checkpoints and images stay on disk, git-ignored (`archive/**/output/weights/`, `archive/**/output/images/`, `*.png`).

@@ -45,3 +45,6 @@ results_pilot/**/*.tmp
 results_pilot/**/images/
 results_pilot/**/*.npz
 results_pilot/*.zip
+# Archived legacy multistage runs: keep logs, not checkpoints or images
+archive/**/output/weights/
+archive/**/output/images/

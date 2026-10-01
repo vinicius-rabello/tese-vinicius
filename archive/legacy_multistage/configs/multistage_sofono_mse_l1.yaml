@@ -1,0 +1,17 @@
+# Stage-2 (multistage residual) training on top of the SoFoNO mse checkpoint.
+# Stage 2 trains against the normalized residual using an L1 (not MSE) loss --
+# see train_multistage.py's STAGE2_LOSS_NORM. Checkpoint selection/scheduling
+# still uses the fixed MSE "final_mse" metric, so this is directly comparable
+# to the MSE-trained multistage_sofono_mse.yaml counterpart.
+
+MODEL_NAME: "sofono"
+STAGE1_CHECKPOINT: "models/SoFoNO/test_composite_loss_mse/18_08_2026_125238/output/weights/SOFONO_best.pth"
+ROOT_FOLDER: "models/SoFoNO/test_composite_loss_mse_multistage_l1/"
+DEVICE: "cuda"
+NUM_WORKERS: 4
+
+STAGE2_LOSS_NORM: "l1"
+
+BATCH_SIZE: 8
+NUM_EPOCHS: 500
+LEARNING_RATE: 0.00004

@@ -7,7 +7,8 @@ to stage n-1 (a plain model for stage 1, a StageChain otherwise); only f_n is
 trained. epsilon_n is the RMS of the residual of stage n-1 over the training
 set, stored as a buffer so it travels with the checkpoint.
 
-The original train_multistage.py / models/multistage.py stay untouched for the
+The original train_multistage.py / models/multistage.py (now archived in
+archive/legacy_multistage/) are kept for the
 old results; this is the version on the new run infrastructure.
 """
 

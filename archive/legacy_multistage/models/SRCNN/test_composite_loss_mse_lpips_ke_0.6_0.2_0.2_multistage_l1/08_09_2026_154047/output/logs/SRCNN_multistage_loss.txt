@@ -1,0 +1,64 @@
+[Duration: 7.9s | Total Duration: 0.00h] Epoch [1/500] | LR: 0.000100
+  Train -> Residual loss: 0.678926 | Final MSE: 0.000576
+  Val   -> Residual loss: 0.683288 | Final MSE: 0.000574
+----------------------------------------------------------------------
+[Duration: 7.9s | Total Duration: 0.00h] Epoch [2/500] | LR: 0.000100
+  Train -> Residual loss: 0.674588 | Final MSE: 0.000568
+  Val   -> Residual loss: 0.680991 | Final MSE: 0.000570
+----------------------------------------------------------------------
+[Duration: 7.9s | Total Duration: 0.01h] Epoch [3/500] | LR: 0.000100
+  Train -> Residual loss: 0.672546 | Final MSE: 0.000564
+  Val   -> Residual loss: 0.679629 | Final MSE: 0.000568
+----------------------------------------------------------------------
+[Duration: 7.9s | Total Duration: 0.01h] Epoch [4/500] | LR: 0.000100
+  Train -> Residual loss: 0.671234 | Final MSE: 0.000562
+  Val   -> Residual loss: 0.678734 | Final MSE: 0.000566
+----------------------------------------------------------------------
+[Duration: 7.9s | Total Duration: 0.01h] Epoch [5/500] | LR: 0.000100
+  Train -> Residual loss: 0.670446 | Final MSE: 0.000561
+  Val   -> Residual loss: 0.678233 | Final MSE: 0.000565
+----------------------------------------------------------------------
+[Duration: 8.0s | Total Duration: 0.01h] Epoch [6/500] | LR: 0.000100
+  Train -> Residual loss: 0.669940 | Final MSE: 0.000560
+  Val   -> Residual loss: 0.677684 | Final MSE: 0.000565
+----------------------------------------------------------------------
+[Duration: 7.9s | Total Duration: 0.02h] Epoch [7/500] | LR: 0.000100
+  Train -> Residual loss: 0.669535 | Final MSE: 0.000559
+  Val   -> Residual loss: 0.676998 | Final MSE: 0.000564
+----------------------------------------------------------------------
+[Duration: 7.9s | Total Duration: 0.02h] Epoch [8/500] | LR: 0.000100
+  Train -> Residual loss: 0.669049 | Final MSE: 0.000559
+  Val   -> Residual loss: 0.676675 | Final MSE: 0.000563
+----------------------------------------------------------------------
+[Duration: 8.0s | Total Duration: 0.02h] Epoch [9/500] | LR: 0.000100
+  Train -> Residual loss: 0.668653 | Final MSE: 0.000558
+  Val   -> Residual loss: 0.676321 | Final MSE: 0.000563
+----------------------------------------------------------------------
+[Duration: 8.4s | Total Duration: 0.02h] Epoch [10/500] | LR: 0.000100
+  Train -> Residual loss: 0.668383 | Final MSE: 0.000557
+  Val   -> Residual loss: 0.676224 | Final MSE: 0.000562
+----------------------------------------------------------------------
+[Duration: 8.0s | Total Duration: 0.02h] Epoch [11/500] | LR: 0.000100
+  Train -> Residual loss: 0.667983 | Final MSE: 0.000557
+  Val   -> Residual loss: 0.675918 | Final MSE: 0.000562
+----------------------------------------------------------------------
+[Duration: 7.9s | Total Duration: 0.03h] Epoch [12/500] | LR: 0.000100
+  Train -> Residual loss: 0.667856 | Final MSE: 0.000557
+  Val   -> Residual loss: 0.675615 | Final MSE: 0.000561
+----------------------------------------------------------------------
+[Duration: 7.9s | Total Duration: 0.03h] Epoch [13/500] | LR: 0.000100
+  Train -> Residual loss: 0.667330 | Final MSE: 0.000556
+  Val   -> Residual loss: 0.675675 | Final MSE: 0.000561
+----------------------------------------------------------------------
+[Duration: 7.9s | Total Duration: 0.03h] Epoch [14/500] | LR: 0.000100
+  Train -> Residual loss: 0.667385 | Final MSE: 0.000556
+  Val   -> Residual loss: 0.675182 | Final MSE: 0.000561
+----------------------------------------------------------------------
+[Duration: 7.9s | Total Duration: 0.03h] Epoch [15/500] | LR: 0.000100
+  Train -> Residual loss: 0.667191 | Final MSE: 0.000555
+  Val   -> Residual loss: 0.675032 | Final MSE: 0.000560
+----------------------------------------------------------------------
+[Duration: 7.9s | Total Duration: 0.04h] Epoch [16/500] | LR: 0.000100
+  Train -> Residual loss: 0.666862 | Final MSE: 0.000555
+  Val   -> Residual loss: 0.674882 | Final MSE: 0.000560
+----------------------------------------------------------------------

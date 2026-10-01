@@ -1,0 +1,13 @@
+# Stage-2 (multistage residual) training on top of the SRNO mse_lpips_ke checkpoint.
+# Stage 2 always trains against the normalized residual with plain MSE,
+# regardless of which loss strategy stage 1 used -- see train_multistage.py.
+
+MODEL_NAME: "srno"
+STAGE1_CHECKPOINT: "models/SRNO/test_composite_loss_mse_lpips_ke_0.6_0.2_0.2/18_08_2026_051117/output/weights/SRNO_best.pth"
+ROOT_FOLDER: "models/SRNO/test_composite_loss_mse_lpips_ke_0.6_0.2_0.2_multistage/"
+DEVICE: "cuda"
+NUM_WORKERS: 4
+
+BATCH_SIZE: 16
+NUM_EPOCHS: 500
+LEARNING_RATE: 0.00004
