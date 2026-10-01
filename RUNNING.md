@@ -104,7 +104,7 @@ python scripts/gpu_hours.py --measured results
 
 `collect_results.py` evaluates on the GPU if a finished run has no metrics. While a queue is running, use `--no-eval`.
 
-**Backup** (`results/` stays out of git): `scripts/backup_results.sh` writes `/home/lcadame/Vinicius_Thesis/backups/results_light_<date>.zip`. The zip holds, per run, config, summary, train_log, eval summaries and per-day metrics, plus `tables/`, the newest test and validation reports, and DECISIONS/STATUS/OPEN_QUESTIONS; no `.pt`, no `.npz`. Next to the zip, `best_pt_<date>.txt` lists the `best.pt` of the main configurations (A, B, C, E) with size and sha256, then the others. Copy those `best.pt` files separately.
+**Backup** (`results/` stays out of git): `scripts/backup_results.sh` writes `/home/lcadame/Vinicius_Thesis/Vinicius/backups/results_light_<date>.zip`. The zip holds, per run, config, summary, train_log, eval summaries and per-day metrics, plus `tables/`, the newest test and validation reports, and DECISIONS/STATUS/OPEN_QUESTIONS; no `.pt`, no `.npz`. Next to the zip, `best_pt_<date>.txt` lists the `best.pt` of the main configurations (A, B, C, E) with size and sha256, then the others. Copy those `best.pt` files separately.
 
 ## 6. If the campaign code needs a fix
 

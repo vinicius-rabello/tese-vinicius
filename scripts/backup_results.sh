@@ -2,7 +2,7 @@
 # Light backup of the campaign results (results/ stays out of git):
 #
 #     scripts/backup_results.sh [results dir] [output dir]
-#     (defaults: results, /home/lcadame/Vinicius_Thesis/backups)
+#     (defaults: results, /home/lcadame/Vinicius_Thesis/Vinicius/backups)
 #
 # Writes <output dir>/results_light_<date-time>.zip with, per run, config.json,
 # summary.json, train_log.csv, eval_summary*.json and metrics_per_sample*.csv
@@ -20,7 +20,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 RESULTS=${1:-results}
-OUT=${2:-/home/lcadame/Vinicius_Thesis/backups}
+OUT=${2:-/home/lcadame/Vinicius_Thesis/Vinicius/backups}
 STAMP=$(date +%Y%m%d-%H%M)
 mkdir -p "$OUT"
 ZIP="$(cd "$OUT" && pwd)/results_light_$STAMP.zip"

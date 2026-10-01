@@ -51,3 +51,6 @@ archive/**/output/images/
 
 # Campaign worktree (git worktree at the campanha-* tag; RUNNING.md)
 /_run/
+
+# Light result backups (scripts/backup_results.sh)
+/backups/
