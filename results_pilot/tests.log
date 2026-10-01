@@ -47,7 +47,10 @@ PASS  Wiener (gamma 1e-4) has lower MSE than the identity baseline  (mean MSE 1.
 PASS  LPIPS: loss and evaluation call the same lpips_utils.lpips_distance object
 PASS  evaluation refuses a run without config.json (clear error)
 PASS  end to end: 8 rows with dates, spectra.npz shapes (8, 63)  (mean mse 5.051e-03, psnr 37.53, ssim 0.9510)
-16/16 checks passed
+PASS  evaluation stores k_c_01 and the censoring markers (per sample and pooled), keeping the old columns
+PASS  k_c (eps <= 1/2) censored at 63 while k_c_01 (eps <= 0.1) = 30, not censored  (k_c 63, k_c_01 30)
+PASS  no censoring when eps crosses both thresholds: k_c = k_c_01 = 20
+19/19 checks passed
 === tests/test_noise.py
 PASS  noise_std = 0: LR and HR bit-identical to the dataset before NOISE_STD
 PASS  noise_std = 0: the global RNG is not touched
@@ -68,12 +71,14 @@ PASS  identical models: paired difference 0 with interval [0, 0]
 PASS  autocorrelated series: 95% interval contains the true mean  (mean 0.603, 7-day [0.381, 0.831], 30-day [0.375, 0.834])
 PASS  same seed -> same interval
 PASS  pooled k_c from shell sums: eps <= 1/2 up to k = 20 -> k_c = 20
+PASS  two thresholds: eps 0.05 up to k = 30, 0.3 above -> k_c = 63 (censored), k_c_01 = 30
 PASS  stats.py writes every table as CSV, Markdown and LaTeX
 PASS  mean +- std across the 3 seeds matches a direct computation  (0.00110786 +- 0.0001)
 PASS  pooled k_c in main_results
+PASS  k_c_01 in main_results with the censoring column (k_c 20: not censored)
 PASS  comparisons: vs Wiener and lambda vs MSE present, with 7- and 30-day intervals
 PASS  multistage: stage 1 = seed 0 only (not the 3-seed mean), stage 2 and control kept apart; stage 2 vs stage 1 and the control vs stages 1 and 2
-11/11 checks passed
+13/13 checks passed
 === tests/test_multistage.py
 PASS  f_n = 0 -> the chain returns stage n-1 exactly
 PASS  stage n-1 frozen and kept in eval mode by model.train()

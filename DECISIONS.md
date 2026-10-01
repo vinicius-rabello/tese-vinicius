@@ -175,3 +175,10 @@ One line per decision not covered by the instructions, with the reason.
 ## Legacy multistage archived (user decision, 2026-10-01)
 
 - `train_multistage.py`, `models/multistage.py`, `configs/multistage*.yaml`, the multistage notebooks/CSVs/report and the old run folders `models/*/test_composite_loss_*_multistage*/` were moved (not deleted) to `archive/legacy_multistage/` with their relative paths and committed, with a README saying they are not part of the campaign. Their checkpoints and images stay on disk, git-ignored (`archive/**/output/weights/`, `archive/**/output/images/`, `*.png`).
+
+## Queues and campaign worktree (user decisions, 2026-10-01)
+
+- Block D reduced to SRCNN, DSC/MS, SRNO (PRUSR, SoFoNO in `configs/D_optional/`, in no queue); no seed cuts in A or C. Regime B: 5 MSE + 5 best lambda + lambda sweep on SRCNN (13 configs, the best lambda shared), after the advisor. E: stage 1 = block A run of the best architecture of A.
+- Queues in priority order (`queues/fase1.txt` .. `fase7.txt`): A seed 0 (SRCNN, DSC/MS, PRUSR, SRNO, SoFoNO) then B; C seed 0; D; A seeds 1-2; C seeds 1-2; E; regime B. Lines are paths or glob patterns (for configs generated later); `scripts/run_queue.py` resolves them in order without repeats, refuses a line that matches nothing (naming the generator), trains with one `train.py --config ... --max-hours 70` call and then evaluates the finished runs that have no test metrics.
+- The campaign runs from a linked git worktree at a `campanha-*` tag (`RUNNING.md`); `run_queue.py` refuses to start anywhere else, including the main folder right after tagging (checked with `git rev-parse --git-dir` vs `--git-common-dir`). Results go to the main folder's `results/` through a symlink in the worktree.
+- `gpu_hours.py --measured results`: seconds per epoch (mean over epochs 2..) and epochs per run (mean `epochs_completed` per architecture and lambda group, falling back to the other lambda group, then to 150 epochs marked *) from finished single-stage runs.
