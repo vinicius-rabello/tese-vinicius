@@ -1,0 +1,15 @@
+{
+  "run_id": "P_dscms_res_lam0.1_seed0",
+  "status": "completed_max_epochs",
+  "epochs_completed": 2,
+  "best_epoch": 2,
+  "best_val_mse": 0.002743768320697909,
+  "monitor_metric": "val_mse",
+  "final_lr": 0.0001,
+  "train_hours": 0.028995796800833584,
+  "n_params": 140203,
+  "residual": true,
+  "lambda": 0.1,
+  "noise_std": 0.0,
+  "finished": "2026-10-01T11:02:43.684416"
+}

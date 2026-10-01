@@ -1,0 +1,15 @@
+{
+  "run_id": "P_srno_res_lam0_seed0",
+  "status": "completed_max_epochs",
+  "epochs_completed": 2,
+  "best_epoch": 2,
+  "best_val_mse": 0.0011171973620958005,
+  "monitor_metric": "val_mse",
+  "final_lr": 4e-05,
+  "train_hours": 0.09987894011666665,
+  "n_params": 2014466,
+  "residual": true,
+  "lambda": 0.0,
+  "noise_std": 0.0,
+  "finished": "2026-10-01T11:50:29.252405"
+}

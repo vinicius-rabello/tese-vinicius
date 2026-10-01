@@ -1,0 +1,27 @@
+pilot2 start 2026-10-01 11:14:44 at commit 6e87591
+[P_prusr_res_lam0_seed0] completed_max_epochs after 2 epochs (best 0.00182031 @ epoch 2, 0.06h).
+P_prusr_lam0 peak_MiB=9688
+[P_sofono_res_lam0.1_seed0] completed_max_epochs after 2 epochs (best 0.000578696 @ epoch 2, 0.15h).
+P_sofono_lam0.1 peak_MiB=13268
+[P_sofono_res_lam0_seed0] completed_max_epochs after 2 epochs (best 0.00103914 @ epoch 2, 0.14h).
+P_sofono_lam0 peak_MiB=13204
+[P_srcnn_res_lam0.1_seed0] completed_max_epochs after 2 epochs (best 0.00217427 @ epoch 2, 0.02h).
+P_srcnn_lam0.1 peak_MiB=4758
+[P_srcnn_res_lam0_seed0] completed_max_epochs after 2 epochs (best 0.00200118 @ epoch 2, 0.00h).
+P_srcnn_lam0 peak_MiB=3324
+[P_srno_res_lam0.1_seed0] completed_max_epochs after 2 epochs (best 0.000705498 @ epoch 2, 0.11h).
+P_srno_lam0.1 peak_MiB=13214
+[P_srno_res_lam0_seed0] completed_max_epochs after 2 epochs (best 0.0011172 @ epoch 2, 0.10h).
+P_srno_lam0 peak_MiB=12294
+training done 2026-10-01 11:50:29
+/home/lcadame/Vinicius_Thesis/Vinicius/results_pilot/P_dscms_res_lam0.1_seed0: mse 0.003017 psnr 39.848 ssim 0.9680
+/home/lcadame/Vinicius_Thesis/Vinicius/results_pilot/P_dscms_res_lam0_seed0: mse 0.002952 psnr 39.970 ssim 0.9679
+/home/lcadame/Vinicius_Thesis/Vinicius/results_pilot/P_prusr_res_lam0.1_seed0: mse 0.001645 psnr 42.491 ssim 0.9747
+/home/lcadame/Vinicius_Thesis/Vinicius/results_pilot/P_prusr_res_lam0_seed0: mse 0.001995 psnr 41.666 ssim 0.9724
+/home/lcadame/Vinicius_Thesis/Vinicius/results_pilot/P_sofono_res_lam0.1_seed0: mse 0.0006334 psnr 46.664 ssim 0.9892
+/home/lcadame/Vinicius_Thesis/Vinicius/results_pilot/P_sofono_res_lam0_seed0: mse 0.001137 psnr 44.145 ssim 0.9815
+/home/lcadame/Vinicius_Thesis/Vinicius/results_pilot/P_srcnn_res_lam0.1_seed0: mse 0.002377 psnr 40.884 ssim 0.9741
+/home/lcadame/Vinicius_Thesis/Vinicius/results_pilot/P_srcnn_res_lam0_seed0: mse 0.002231 psnr 41.183 ssim 0.9729
+/home/lcadame/Vinicius_Thesis/Vinicius/results_pilot/P_srno_res_lam0.1_seed0: mse 0.0007649 psnr 45.839 ssim 0.9877
+/home/lcadame/Vinicius_Thesis/Vinicius/results_pilot/P_srno_res_lam0_seed0: mse 0.001241 psnr 43.752 ssim 0.9805
+pilot2 done 2026-10-01 11:53:12

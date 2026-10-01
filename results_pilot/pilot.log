@@ -1,0 +1,41 @@
+pilot start 2026-10-01 11:00:55
+[P_dscms_res_lam0.1_seed0] completed_max_epochs after 2 epochs (best 0.00274377 @ epoch 2, 0.03h).
+P_dscms_lam0.1 peak_MiB=6278
+[P_dscms_res_lam0_seed0] completed_max_epochs after 2 epochs (best 0.00272939 @ epoch 2, 0.01h).
+P_dscms_lam0 peak_MiB=3558
+[P_prusr_res_lam0.1_seed0] completed_max_epochs after 2 epochs (best 0.00151025 @ epoch 2, 0.07h).
+P_prusr_lam0.1 peak_MiB=9692
+Traceback (most recent call last):
+RuntimeError: Tracked files have uncommitted changes; commit them before a real run (or set ALLOW_DIRTY: true) so config.json records the exact code.
+P_prusr_lam0 peak_MiB=310
+Traceback (most recent call last):
+RuntimeError: Tracked files have uncommitted changes; commit them before a real run (or set ALLOW_DIRTY: true) so config.json records the exact code.
+P_sofono_lam0.1 peak_MiB=310
+Traceback (most recent call last):
+RuntimeError: Tracked files have uncommitted changes; commit them before a real run (or set ALLOW_DIRTY: true) so config.json records the exact code.
+P_sofono_lam0 peak_MiB=310
+Traceback (most recent call last):
+RuntimeError: Tracked files have uncommitted changes; commit them before a real run (or set ALLOW_DIRTY: true) so config.json records the exact code.
+P_srcnn_lam0.1 peak_MiB=310
+Traceback (most recent call last):
+RuntimeError: Tracked files have uncommitted changes; commit them before a real run (or set ALLOW_DIRTY: true) so config.json records the exact code.
+P_srcnn_lam0 peak_MiB=310
+Traceback (most recent call last):
+RuntimeError: Tracked files have uncommitted changes; commit them before a real run (or set ALLOW_DIRTY: true) so config.json records the exact code.
+P_srno_lam0.1 peak_MiB=368
+Traceback (most recent call last):
+RuntimeError: Tracked files have uncommitted changes; commit them before a real run (or set ALLOW_DIRTY: true) so config.json records the exact code.
+P_srno_lam0 peak_MiB=368
+training done 2026-10-01 11:08:37
+results_pilot/P_dscms_res_lam0.1_seed0: mse 0.003017 psnr 39.848 ssim 0.9680
+results_pilot/P_dscms_res_lam0_seed0: mse 0.002952 psnr 39.970 ssim 0.9679
+results_pilot/P_prusr_res_lam0.1_seed0: mse 0.001645 psnr 42.491 ssim 0.9747
+SKIPPED results_pilot/P_prusr_res_lam0_seed0: results_pilot/P_prusr_res_lam0_seed0/config.json not found: without it the architecture, residual flag and evaluation constants are unknown, so this run is not evaluated.
+SKIPPED results_pilot/P_sofono_res_lam0.1_seed0: results_pilot/P_sofono_res_lam0.1_seed0/config.json not found: without it the architecture, residual flag and evaluation constants are unknown, so this run is not evaluated.
+SKIPPED results_pilot/P_sofono_res_lam0_seed0: results_pilot/P_sofono_res_lam0_seed0/config.json not found: without it the architecture, residual flag and evaluation constants are unknown, so this run is not evaluated.
+SKIPPED results_pilot/P_srcnn_res_lam0.1_seed0: results_pilot/P_srcnn_res_lam0.1_seed0/config.json not found: without it the architecture, residual flag and evaluation constants are unknown, so this run is not evaluated.
+SKIPPED results_pilot/P_srcnn_res_lam0_seed0: results_pilot/P_srcnn_res_lam0_seed0/config.json not found: without it the architecture, residual flag and evaluation constants are unknown, so this run is not evaluated.
+SKIPPED results_pilot/P_srno_res_lam0.1_seed0: results_pilot/P_srno_res_lam0.1_seed0/config.json not found: without it the architecture, residual flag and evaluation constants are unknown, so this run is not evaluated.
+SKIPPED results_pilot/P_srno_res_lam0_seed0: results_pilot/P_srno_res_lam0_seed0/config.json not found: without it the architecture, residual flag and evaluation constants are unknown, so this run is not evaluated.
+7 run(s) not evaluated: ['results_pilot/P_prusr_res_lam0_seed0', 'results_pilot/P_sofono_res_lam0.1_seed0', 'results_pilot/P_sofono_res_lam0_seed0', 'results_pilot/P_srcnn_res_lam0.1_seed0', 'results_pilot/P_srcnn_res_lam0_seed0', 'results_pilot/P_srno_res_lam0.1_seed0', 'results_pilot/P_srno_res_lam0_seed0']
+pilot done 2026-10-01 11:09:25

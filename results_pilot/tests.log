@@ -1,0 +1,95 @@
+=== tests/test_residual.py
+PASS  srcnn: residual=true, zeroed output layer -> y == x
+PASS  srcnn: residual=false, zeroed output layer -> y == 0
+PASS  dscms: residual=true, zeroed output layer -> y == x
+PASS  dscms: residual=false, zeroed output layer -> y == 0
+PASS  prusr: residual=true, zeroed output layer -> y == x
+PASS  prusr: residual=false, zeroed output layer -> y == 0
+PASS  srno: residual=true, zeroed output layer -> y == x
+PASS  srno: residual=false, zeroed output layer -> y == 0
+PASS  sofono: residual=true, zeroed output layer -> y == x
+PASS  sofono: residual=false, zeroed output layer -> y == 0
+PASS  srcnn: residual=None identical to the pre-change model
+PASS  srcnn: residual=false with the same weights identical to the pre-change model  (max abs diff 0)
+PASS  dscms: residual=None identical to the pre-change model
+PASS  dscms: residual=false with the same weights identical to the pre-change model  (max abs diff 0)
+PASS  prusr: residual=None identical to the pre-change model
+PASS  prusr: residual=false with the same weights identical to the pre-change model  (max abs diff 0)
+PASS  srno: residual=None identical to the pre-change model
+PASS  srno: residual=true with the same weights identical to the pre-change model  (max abs diff 0)
+PASS  sofono: residual=None identical to the pre-change model
+PASS  sofono: residual=true with the same weights identical to the pre-change model  (max abs diff 0)
+20/20 checks passed
+=== tests/test_loss.py
+PASS  lambda=0: loss bit-identical to the old MSE loss
+PASS  lambda=0: every parameter gradient bit-identical
+PASS  lambda=0: the LPIPS network is never built while training
+PASS  lambda>0: the loss goes through lpips_utils.to_lpips_input (u and v, pred and target)  (calls: 4)
+PASS  lambda>0: LPIPS term equals the shared lpips_distance (the evaluation path)
+PASS  lambda>0: loss == MSE + lambda * LPIPS
+PASS  lambda=0 with compute_lpips: LPIPS logged, loss still plain MSE
+PASS  scale: training extremes map into [-1, 1], channel repeated 3x  (max |u|,|v| = 2.869149, scaled max = 1.000000)
+8/8 checks passed
+=== tests/test_metrics.py
+PASS  (a) H(k)=exp(-k^2/(2*10^2)) applied to HR reproduces the dataset LR  (max abs diff 3.58e-07 m/s)
+PASS  (b) radial spectrum of a single cosine: E(k0) = A^2/4, zero elsewhere  (E(7) = 0.160000, expected 0.160000)
+PASS  (c) KE(y, y) = 0 and WKE(y, y) = 0
+PASS  (d) rho(k)(y, y) = 1 for every k, k_c = 63
+PASS  T(k) = 1 and eps(k) = 0 for yhat = y, k_c = 63
+PASS  identity on a cosine at k0 = 3, 7, 15, 25: T(k0) = H(k0)^2, eps(k0) = (1 - H(k0))^2  (max abs deviation 2.2e-16)
+PASS  identity (blurred LR): k_c near where (1-H)^2 = 1/2, while k_c_fase stays high  (k_c = 15, analytic 15.7; k_c_fase = 53.1)
+PASS  (f) same seed -> same initial loss
+PASS  (g) PSNR(s0) - PSNR(s1) = 10 log10(MSE1/MSE0): same R for both samples  (ranges of the two HR samples: 2.300, 2.342 m/s; R = 5.3268)
+PASS  bands: sum of per-band errors == MSE (Parseval)
+PASS  SSIM matches piq.ssim (inputs inside [0, R] after the fixed offset)  (max diff 3.2e-06)
+PASS  SSIM(y, y) = 1
+PASS  Wiener (gamma 1e-4) has lower MSE than the identity baseline  (mean MSE 1.102e-03 vs 4.132e-03)
+PASS  LPIPS: loss and evaluation call the same lpips_utils.lpips_distance object
+PASS  evaluation refuses a run without config.json (clear error)
+PASS  end to end: 8 rows with dates, spectra.npz shapes (8, 63)  (mean mse 5.051e-03, psnr 37.53, ssim 0.9510)
+16/16 checks passed
+=== tests/test_noise.py
+PASS  noise_std = 0: LR and HR bit-identical to the dataset before NOISE_STD
+PASS  noise_std = 0: the global RNG is not touched
+PASS  fixed noise: same sample, same noise in two dataset instances (every model sees it)
+PASS  fixed noise: different samples get different noise
+PASS  fixed noise: validation and test offsets give different noise on the same index
+PASS  fixed noise: the HR target stays clean
+PASS  fixed noise: mean ~ 0 and std ~ sigma  (mean 7.40e-06, std 0.01000, sigma 0.01)
+PASS  random noise: a new draw on every access (every epoch)
+PASS  random noise: reproducible under the same seed
+PASS  run name unchanged without NOISE_STD and with NOISE_STD = 0
+PASS  run name gets _noise<sigma> only when NOISE_STD > 0
+11/11 checks passed
+=== tests/test_stats.py
+PASS  7-day blocks: 974 test days -> 140 blocks of at most 7 days  (sizes 1..7)
+PASS  constant series: interval collapses to the value
+PASS  identical models: paired difference 0 with interval [0, 0]
+PASS  autocorrelated series: 95% interval contains the true mean  (mean 0.603, 7-day [0.381, 0.831], 30-day [0.375, 0.834])
+PASS  same seed -> same interval
+PASS  pooled k_c from shell sums: eps <= 1/2 up to k = 20 -> k_c = 20
+PASS  stats.py writes every table as CSV, Markdown and LaTeX
+PASS  mean +- std across the 3 seeds matches a direct computation  (0.00110786 +- 0.0001)
+PASS  pooled k_c in main_results
+PASS  comparisons: vs Wiener and lambda vs MSE present, with 7- and 30-day intervals
+PASS  multistage: stage 1 = seed 0 only (not the 3-seed mean), stage 2 and control kept apart; stage 2 vs stage 1 and the control vs stages 1 and 2
+11/11 checks passed
+=== tests/test_multistage.py
+PASS  f_n = 0 -> the chain returns stage n-1 exactly
+PASS  stage n-1 frozen and kept in eval mode by model.train()
+PASS  epsilon travels in the state dict
+PASS  training loss = MSE(f_n(x), (y - y_hat(n-1)) / epsilon) (same gradient)  (max diff 9.54e-07)
+PASS  a stage with RESIDUAL: true is refused
+PASS  stage 2 interrupted by --max-hours resumes and finishes, reusing epsilon
+PASS  epsilon_2 = RMS of the stage-1 residual on the training set  (0.0732566 vs 0.0732566 m/s)
+PASS  stage-1 weights unchanged inside the stage-2 checkpoint
+PASS  only f_2 counted as trainable parameters
+PASS  stage 3 = stage 1 + eps_2 f_2 + eps_3 f_3 on the original input (recursive load)
+PASS  evaluate_run.load_model rebuilds the stage-3 chain
+PASS  control trains exactly the epochs of stage 1 + stage 2, then stops
+12/12 checks passed
+=== tests/test_resume.py
+PASS  deterministic: resumed after every epoch (3 launches) is bit-identical  (3 vs 3 epochs)
+PASS  default: resumed after every epoch (3 launches) matches within relative 0.001 in val MSE  (max relative diff 4.70e-08; 3 vs 3 epochs)
+2/2 checks passed
+ALLDONE

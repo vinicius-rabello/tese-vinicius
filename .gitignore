@@ -43,3 +43,5 @@ results/**/images/
 results_pilot/**/*.pt
 results_pilot/**/*.tmp
 results_pilot/**/images/
+results_pilot/**/*.npz
+results_pilot/*.zip

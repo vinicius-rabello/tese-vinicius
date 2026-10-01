@@ -1,0 +1,11 @@
+{'run': 'P_dscms_res_lam0.1_seed0', 'model': 'dscms', 'lambda': 0.1, 'deterministic': False, 'epoch_sec_with_val': 46.14, 'val_sec': 2.4, 'epoch_sec_train_only': 43.74}
+{'run': 'P_dscms_res_lam0_seed0', 'model': 'dscms', 'lambda': 0.0, 'deterministic': False, 'epoch_sec_with_val': 20.53, 'val_sec': 2.39, 'epoch_sec_train_only': 18.14}
+{'run': 'P_prusr_res_lam0.1_seed0', 'model': 'prusr', 'lambda': 0.1, 'deterministic': False, 'epoch_sec_with_val': 128.07, 'val_sec': 6.2, 'epoch_sec_train_only': 121.87}
+{'run': 'P_prusr_res_lam0_seed0', 'model': 'prusr', 'lambda': 0.0, 'deterministic': False, 'epoch_sec_with_val': 102.4, 'val_sec': 6.19, 'epoch_sec_train_only': 96.21}
+{'run': 'P_sofono_res_lam0.1_seed0', 'model': 'sofono', 'lambda': 0.1, 'deterministic': False, 'epoch_sec_with_val': 276.36, 'val_sec': 10.48, 'epoch_sec_train_only': 265.88}
+{'run': 'P_sofono_res_lam0_seed0', 'model': 'sofono', 'lambda': 0.0, 'deterministic': False, 'epoch_sec_with_val': 242.92, 'val_sec': 10.46, 'epoch_sec_train_only': 232.46}
+{'run': 'P_srcnn_res_lam0.1_seed0', 'model': 'srcnn', 'lambda': 0.1, 'deterministic': False, 'epoch_sec_with_val': 31.86, 'val_sec': 1.74, 'epoch_sec_train_only': 30.12}
+{'run': 'P_srcnn_res_lam0_seed0', 'model': 'srcnn', 'lambda': 0.0, 'deterministic': False, 'epoch_sec_with_val': 6.23, 'val_sec': 1.75, 'epoch_sec_train_only': 4.48}
+{'run': 'P_srno_res_lam0.1_seed0', 'model': 'srno', 'lambda': 0.1, 'deterministic': True, 'epoch_sec_with_val': 206.55, 'val_sec': 7.19, 'epoch_sec_train_only': 199.36}
+{'run': 'P_srno_res_lam0_seed0', 'model': 'srno', 'lambda': 0.0, 'deterministic': True, 'epoch_sec_with_val': 179.38, 'val_sec': 7.17, 'epoch_sec_train_only': 172.21}
+-> results_pilot/validation_time.csv
