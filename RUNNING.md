@@ -7,7 +7,7 @@ Paths below:
 | Name | Path |
 |---|---|
 | Main folder (development) | `/home/lcadame/Vinicius_Thesis/Vinicius` |
-| Campaign worktree | `/home/lcadame/Vinicius_Thesis/Vinicius_campanha` |
+| Campaign worktree (inside the main folder, git-ignored) | `/home/lcadame/Vinicius_Thesis/Vinicius/_run` |
 
 ## 1. Before tagging (main folder)
 
@@ -18,17 +18,20 @@ source venv/bin/activate
 for t in tests/test_*.py; do python $t | tail -1; done   # all "N/N checks passed"
 ```
 
-## 2. Tag and worktree (only after your go-ahead)
+## 2. Tag and worktree (done on 2026-10-01: tag `campanha-v1` = b25f1f3, worktree `_run/`)
 
 ```bash
+cd /home/lcadame/Vinicius_Thesis/Vinicius
 git tag -a campanha-v1 -m "Campaign code, $(date +%F)"
-git worktree add --detach ../Vinicius_campanha campanha-v1
-cd ../Vinicius_campanha
-ln -s ../Vinicius/hycom_numpy hycom_numpy   # data (read only)
-ln -s ../Vinicius/venv venv                 # same Python environment
-ln -s ../Vinicius/results results           # results land in the main folder's results/
-mkdir -p logs                               # queue logs (git-ignored: /logs/)
+git worktree add --detach _run campanha-v1
+cd _run
+ln -s ../hycom_numpy hycom_numpy   # data (read only)
+ln -s ../venv venv                 # same Python environment
+ln -s ../results results           # results land in the main folder's results/
+mkdir -p logs                      # queue logs (git-ignored: /logs/)
 ```
+
+`_run/` sits inside the main folder but is listed in the main folder's `.gitignore` (`/_run/`), so `git status` and editor searches skip it. Never edit files under `_run/`: it is the frozen campaign code; development happens in the main folder. The `RUNNING.md` inside `_run/` is the tagged copy and still names the first location `../Vinicius_campanha`; this file is the current one.
 
 The symlinks are untracked, so the clean-tree guard of `train.py` still passes. `results/` already holds the baselines, and `collect_results.py` / `stats.py` run from the main folder on it. Development in the main folder must not write to `results/`: use `results_pilot/` or `RESULTS_DIR`.
 
@@ -48,7 +51,7 @@ Run one queue at a time, inside a `screen` session named `campanha`. Set `--max-
 Inside the session:
 
 ```bash
-cd /home/lcadame/Vinicius_Thesis/Vinicius_campanha
+cd /home/lcadame/Vinicius_Thesis/Vinicius/_run
 source venv/bin/activate
 python scripts/run_queue.py queues/fase1.txt --max-hours 27 2>&1 | tee -a logs/fase1.log
 ```
@@ -58,7 +61,7 @@ python scripts/run_queue.py queues/fase1.txt --max-hours 27 2>&1 | tee -a logs/f
   - The test-set evaluation of the finished runs comes after the budget (~20 s per run in the pilot).
   - Leave ~15 min of margin. Omitting the option means 70.
   - To stop at a fixed clock time, compute the hours left: `python3 -c "from datetime import datetime as d; print(round((d.fromisoformat('2026-10-02T16:30') - d.now()).total_seconds() / 3600, 2))"`.
-- **Log:** `/home/lcadame/Vinicius_Thesis/Vinicius_campanha/logs/fase1.log` (`tee -a` appends on every relaunch). Follow it with `tail -f` from any terminal.
+- **Log:** `/home/lcadame/Vinicius_Thesis/Vinicius/_run/logs/fase1.log` (`tee -a` appends on every relaunch). Follow it with `tail -f` from any terminal.
 - **Next block or after a reboot:** open a new `screen -S campanha` and run the same three commands. Finished runs are skipped, an interrupted run resumes from its `last.pt` (saved atomically after every epoch, so at most the epoch in progress is lost), and finished runs that have not been evaluated get their test-set evaluation at the end.
 - **Stopping early:** `screen -r campanha`, then Ctrl-c once. The run in progress keeps the `last.pt` of its last finished epoch; relaunching resumes from there.
 - One queue at a time on the GPU. SRNO and SoFoNO use ~13 GB of the 16 GB, so no other GPU job during the campaign, including development tests in the main folder.
@@ -108,7 +111,7 @@ python scripts/gpu_hours.py --measured results
 Never edit the worktree. Fix and commit in the main folder, tag `campanha-v1.1`, and move the worktree **between queues** (never while a run is going):
 
 ```bash
-cd /home/lcadame/Vinicius_Thesis/Vinicius_campanha && git checkout --detach campanha-v1.1
+cd /home/lcadame/Vinicius_Thesis/Vinicius/_run && git checkout --detach campanha-v1.1
 ```
 
 Runs already finished keep `campanha-v1` in their `config.json`. A run interrupted mid-way records each resume's commit under `resumes`. Record the fix and which runs it affects in `DECISIONS.md`.

@@ -1,6 +1,6 @@
 # Campaign status
 
-Last updated: 2026-10-01. The tag `campanha-v1` points at the commit that adds this line; the campaign worktree is `../Vinicius_campanha`. Phase 1 is launched by the user (screen), not by this session. Nothing of the campaign has been launched; no tag created. How to run it: `RUNNING.md`. Pilot and short measurements are in `results_pilot/` only (`results/` holds only the baselines). Open points: `OPEN_QUESTIONS.md`.
+Last updated: 2026-10-01. The tag `campanha-v1` points at the commit that adds this line; the campaign worktree is `_run/` inside the main folder (moved there from `../Vinicius_campanha` on the same day, before any finished run; git-ignored). Phase 1 is launched by the user (screen), not by this session. Nothing of the campaign has been launched; no tag created. How to run it: `RUNNING.md`. Pilot and short measurements are in `results_pilot/` only (`results/` holds only the baselines). Open points: `OPEN_QUESTIONS.md`.
 
 ## Pipeline stages
 
@@ -167,7 +167,7 @@ With sigma = 1e-2: Wiener MSE 2.28e-3, PSNR 41.05, k_c 22 (`tables/wiener_noise_
 
 ## Next steps
 
-1. The user launches `fase1` from `/home/lcadame/Vinicius_Thesis/Vinicius_campanha` in `screen -S campanha` with `--max-hours 27` (`RUNNING.md`, section 3).
+1. Phase 1 started (13:16) and was stopped by the user at epoch 32 of `A_srcnn_res_lam0_seed0` (6.2 s/epoch, as the pilot predicted; commit = tag, clean tree, no NaN); relaunching resumes it from `last.pt`. The user launches `fase1` from `/home/lcadame/Vinicius_Thesis/Vinicius/_run` in `screen -S campanha` with `--max-hours 27` (`RUNNING.md`, section 3).
 2. After A seed 0: `python scripts/gpu_hours.py --measured results`; architecture for E by validation MSE.
 3. After B: `python collect_results.py --split val --runs "A_*_seed0" "B_*"` -> `selecao_lambda_*.csv` and the `make_block_c.py` command; generate C; `fase2`..`fase5`; generate E, `fase6`.
 4. Regime B (`fase7`) after the advisor's approval, with the same lambda(s).

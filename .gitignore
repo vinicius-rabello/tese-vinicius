@@ -48,3 +48,6 @@ results_pilot/*.zip
 # Archived legacy multistage runs: keep logs, not checkpoints or images
 archive/**/output/weights/
 archive/**/output/images/
+
+# Campaign worktree (git worktree at the campanha-* tag; RUNNING.md)
+/_run/
