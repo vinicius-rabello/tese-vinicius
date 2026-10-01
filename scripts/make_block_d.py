@@ -4,8 +4,9 @@ block A (same architecture, residual = true).
 
     python scripts/make_block_d.py [--arch <name> ...]
 
---arch restricts the ablation to some architectures (the budget rule allows
-running it only on the fast ones); the default is all 5.
+--arch restricts the ablation to some architectures; the default is all 5.
+Campaign (user decision, 2026-10-01): configs/D holds SRCNN, DSC/MS and SRNO
+(`--arch srcnn dscms srno`); PRUSR and SoFoNO were moved to configs/D_optional/.
 """
 
 import argparse
