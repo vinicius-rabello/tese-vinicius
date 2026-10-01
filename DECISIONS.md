@@ -151,6 +151,7 @@ One line per decision not covered by the instructions, with the reason.
 - Seeds: `mean_seeds +- std_seeds` is the mean and sample standard deviation (ddof = 1) of each seed's test-set value; `value [ci_lo, ci_hi]` is the configuration's value with its 7-day interval, computed on the per-day metric averaged over seeds (for pooled metrics: per-day shell sums averaged over seeds).
 - Pooled metrics (k_c, eps and T over k >= D0) are recomputed from the per-day shell sums in `spectra.npz` on every resample; the spectral slope uses `SLOPE_RANGE` from `collect_results.py` on the stored per-sample spectra.
 - Outputs (CSV, Markdown, LaTeX): `main_results`, `comparisons`, and the subsets `bands`, `lambda_sweep`, `ablation_skip`; `multistage` comes with 4.7.
+- Multistage (4.7): `multistage` lists each chain member (stage 1, stages 2-4, the control) with only the run the chain points at (stage 1 from block A is seed 0, not the 3-seed mean); `multistage_comparisons` has stage n - stage n-1 (`multistage_step`) and control - stage 1 / control - stage 2 (`control_vs_stage1/2`), paired, 7- and 30-day blocks, for every metric including KE/WKE and the bands. Chains are found from `config.json` (`multistage.previous_run`, `FIXED_EPOCHS_FROM`); stage labels come from `STAGE`, so the control (`STAGE: control`) never merges with block A.
 
 ## 4.7 Multistage on the new infrastructure
 

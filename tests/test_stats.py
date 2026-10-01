@@ -89,6 +89,14 @@ def main():
                      {'model': 'srcnn', 'lambda': 0.0, 'residual': True, 'seed': seed}, mses[seed], 0.1)
         fake_run(res, "B_srcnn_res_lam0.01_seed0", {'model': 'srcnn', 'lambda': 0.01, 'residual': True, 'seed': 0},
                  mses[0] * 0.9, 0.1)
+        fake_run(res, "E_srcnn_stage2_nores_lam0_seed0",
+                 {'model': 'srcnn', 'lambda': 0.0, 'residual': False, 'seed': 0, 'config': {'STAGE': 2},
+                  'multistage': {'previous_run': 'results/A_srcnn_res_lam0_seed0'}}, mses[0] * 0.8, 0.1)
+        fake_run(res, "E_srcnn_control_res_lam0_seed0",
+                 {'model': 'srcnn', 'lambda': 0.0, 'residual': True, 'seed': 0,
+                  'config': {'STAGE': 'control', 'FIXED_EPOCHS_FROM': ['results/A_srcnn_res_lam0_seed0',
+                                                                       'results/E_srcnn_stage2_nores_lam0_seed0']}},
+                 mses[0] * 0.95, 0.1)
         fake_run(res, "baseline_wiener", {'baseline': 'wiener', 'noise_std': 0.0}, mses[0] * 0.5, 0.3)
         out = os.path.join(folder, 'tables')
         proc = subprocess.run([sys.executable, 'stats.py', '--results-dir', res, '--out', out, '--n-resamples', '200'],
@@ -114,6 +122,20 @@ def main():
             lam = next(c for c in comps if c['comparison'] == 'lambda_vs_mse' and c['metric'] == 'mse')
             results.append(check("comparisons: vs Wiener and lambda vs MSE present, with 7- and 30-day intervals",
                                  {'vs_wiener', 'lambda_vs_mse'} <= kinds and lam['ci30_lo'] != ''))
+            ms_rows = list(csv.DictReader(open(os.path.join(out, 'multistage.csv'))))
+            ms = {r['config'] for r in ms_rows}
+            s1 = next(r for r in ms_rows if r['config'] == 'srcnn, lambda 0, res' and r['metric'] == 'mse')
+            ms_comp = list(csv.DictReader(open(os.path.join(out, 'multistage_comparisons.csv'))))
+            step = next(c for c in ms_comp if c['comparison'] == 'multistage_step' and c['metric'] == 'mse')
+            results.append(check("multistage: stage 1 = seed 0 only (not the 3-seed mean), stage 2 and control kept "
+                                 "apart; stage 2 vs stage 1 and the control vs stages 1 and 2",
+                                 int(s1['n_seeds']) == 1 and abs(float(s1['value']) - mses[0].mean()) < 1e-15
+                                 and abs(float(step['diff']) + 0.2 * mses[0].mean()) < 1e-12 and
+                                 ms == {'srcnn, lambda 0, res', 'srcnn, lambda 0, nores, stage 2',
+                                        'srcnn, lambda 0, res, stage control'}
+                                 and {c['comparison'] for c in ms_comp} == {'multistage_step', 'control_vs_stage1',
+                                                                             'control_vs_stage2'}
+                                 and step['A'] == 'srcnn, lambda 0, res' and float(step['diff']) < 0))
 
     print(f"\n{sum(results)}/{len(results)} checks passed")
     return 0 if all(results) else 1

@@ -16,6 +16,9 @@ writes, as CSV, Markdown and LaTeX:
                      lambda > 0 against lambda = 0 (same arch, residual, noise),
                      residual = false against residual = true (same arch, lambda, noise)
     bands, lambda_sweep, ablation_skip   subsets of the two tables above
+    multistage     (4.7) every configuration of a multistage chain (stage 1,
+                   the later stages, the control), and multistage_comparisons:
+                   stage n against stage n-1, the control against stages 1 and 2
 
 Per-sample metrics are averaged over seeds day by day before the bootstrap;
 pooled metrics (k_c, eps and T over k >= D0) are recomputed from the per-day
@@ -52,6 +55,7 @@ def load_run(run_dir):
         'per_sample': {m: np.array([float(r[m]) for r in rows]) for m in PER_SAMPLE if m in rows[0]},
         'powers': {n: spectra[f'{n}_power'] for n in ('pred', 'target', 'error') if f'{n}_power' in spectra},
         'spectrum': spectra['pred'],
+        'meta': meta,
     }
     if 'baseline' in meta:
         key = (meta['baseline'], None, None, float(meta.get('noise_std', 0.0)), '')
@@ -73,6 +77,27 @@ def load_all(results_dir):
         run['run_id'] = name
         configs.setdefault(key, {})[seed] = run
     return configs
+
+
+def multistage_pairs(configs):
+    """(kind, key_a, runs_a, key_b, runs_b) for the multistage chains, from
+    config.json: stage n (multistage.previous_run) against stage n-1, and the
+    control (FIXED_EPOCHS_FROM = [stage 1, stage 2]) against stage 1 and
+    stage 2. Each side holds only the run the chain points at, so a stage 1
+    taken from a 3-seed block is compared through its own seed, not the mean."""
+    index = {run['run_id']: (key, seed) for key, runs in configs.items() for seed, run in runs.items()}
+    pairs = []
+    for key, runs in configs.items():
+        for seed, run in runs.items():
+            previous = (run['meta'].get('multistage') or {}).get('previous_run')
+            sources = [('multistage_step', previous)] if previous else []
+            fixed = (run['meta'].get('config') or {}).get('FIXED_EPOCHS_FROM') or []
+            sources += [(f'control_vs_stage{i}', s) for i, s in enumerate(fixed[:2], start=1)]
+            for kind, source in sources:
+                if os.path.basename(source) in index:
+                    key_a, seed_a = index[os.path.basename(source)]
+                    pairs.append((kind, key_a, {seed_a: configs[key_a][seed_a]}, key, {seed: run}))
+    return pairs
 
 
 def label(key):
@@ -219,6 +244,18 @@ def main():
     comp_rows = [compare(kind, a, configs[a], b, configs[b], m, args.n_resamples, SLOPE_RANGE)
                  for kind, a, b in comparison_pairs(configs)
                  for m in metrics if available(configs[a], m) and available(configs[b], m)]
+    chains = multistage_pairs(configs)
+    comp_rows += [compare(kind, a, runs_a, b, runs_b, m, args.n_resamples, SLOPE_RANGE)
+                  for kind, a, runs_a, b, runs_b in chains
+                  for m in metrics if available(runs_a, m) and available(runs_b, m)]
+    # Per-stage rows: each chain member with only the run the chain uses.
+    members = {}
+    for _, a, runs_a, b, runs_b in chains:
+        members[(a, *runs_a)] = (a, runs_a)
+        members[(b, *runs_b)] = (b, runs_b)
+    chain_rows = sorted((config_row(key, runs, m, args.n_resamples, SLOPE_RANGE)
+                         for key, runs in members.values() for m in metrics if available(runs, m)),
+                        key=lambda r: r['config'])
 
     os.makedirs(args.out, exist_ok=True)
     main_cols = ['config', 'metric', 'n_seeds', 'mean_seeds', 'std_seeds', 'value', 'ci_lo', 'ci_hi']
@@ -231,6 +268,9 @@ def main():
                  os.path.join(args.out, 'lambda_sweep'))
     write_tables([r for r in comp_rows if r['comparison'] == 'ablation_skip'], comp_cols,
                  os.path.join(args.out, 'ablation_skip'))
+    write_tables(chain_rows, main_cols, os.path.join(args.out, 'multistage'))
+    write_tables([r for r in comp_rows if r['comparison'] == 'multistage_step' or r['comparison'].startswith('control_vs')],
+                 comp_cols, os.path.join(args.out, 'multistage_comparisons'))
     print(f"{len(configs)} configurations, {len(main_rows)} metric rows, {len(comp_rows)} comparison rows -> {args.out}/")
 
 
