@@ -34,18 +34,33 @@ The symlinks are untracked, so the clean-tree guard of `train.py` still passes. 
 
 `scripts/run_queue.py` refuses to start anywhere other than a linked worktree at a `campanha-*` tag, so a queue launched by mistake from the main folder does nothing.
 
-## 3. Launching a queue
+## 3. Launching a queue (GNU screen)
 
-One tmux session per queue, with `--max-hours` set to the time available (70 for a 72 h lab block, leaving 2 h of margin):
+Run one queue at a time, inside a `screen` session named `campanha`. Set `--max-hours` to the time available: 70 for a 72 h lab block (2 h of margin), 27 for a 27 h window.
+
+| Action | Command |
+|---|---|
+| create the session | `screen -S campanha` |
+| leave it running (detach) | Ctrl-a d |
+| come back | `screen -r campanha` |
+| list sessions | `screen -ls` |
+
+Inside the session:
 
 ```bash
 cd /home/lcadame/Vinicius_Thesis/Vinicius_campanha
-tmux new -d -s fase1 "source venv/bin/activate && python scripts/run_queue.py queues/fase1.txt --max-hours 70 2>&1 | tee -a logs/fase1.log"
+source venv/bin/activate
+python scripts/run_queue.py queues/fase1.txt --max-hours 27 2>&1 | tee -a logs/fase1.log
 ```
 
-- **Budget:** `--max-hours <h>` is passed to `train.py`, which stops cleanly before an epoch that would cross it. Use 70 for a 72 h block and less for a shorter slot, e.g. `--max-hours 27` for a 27 h window. The check happens after each epoch, so a run that starts right before the deadline can overrun by up to one epoch plus data loading (at most ~5 min, SoFoNO). The test-set evaluation of the finished runs comes after the budget (~20 s per run in the pilot). Leave ~15 min of margin. Omitting the option means 70.
-- Session: `fase1`. Log: `/home/lcadame/Vinicius_Thesis/Vinicius_campanha/logs/fase1.log`. Follow with `tail -f`, or `tmux attach -t fase1` (detach: Ctrl-b d).
-- **Next 72 h block:** relaunch the same command. Finished runs are skipped, an interrupted run resumes from its `last.pt`, and finished runs that have not been evaluated get their test-set evaluation at the end.
+- **Budget:** `--max-hours <h>` is passed to `train.py`, which stops cleanly before an epoch that would cross it.
+  - The check happens after each epoch, so a run that starts right before the deadline can overrun by up to one epoch plus data loading (at most ~5 min, SoFoNO).
+  - The test-set evaluation of the finished runs comes after the budget (~20 s per run in the pilot).
+  - Leave ~15 min of margin. Omitting the option means 70.
+  - To stop at a fixed clock time, compute the hours left: `python3 -c "from datetime import datetime as d; print(round((d.fromisoformat('2026-10-02T16:30') - d.now()).total_seconds() / 3600, 2))"`.
+- **Log:** `/home/lcadame/Vinicius_Thesis/Vinicius_campanha/logs/fase1.log` (`tee -a` appends on every relaunch). Follow it with `tail -f` from any terminal.
+- **Next block or after a reboot:** open a new `screen -S campanha` and run the same three commands. Finished runs are skipped, an interrupted run resumes from its `last.pt` (saved atomically after every epoch, so at most the epoch in progress is lost), and finished runs that have not been evaluated get their test-set evaluation at the end.
+- **Stopping early:** `screen -r campanha`, then Ctrl-c once. The run in progress keeps the `last.pt` of its last finished epoch; relaunching resumes from there.
 - One queue at a time on the GPU. SRNO and SoFoNO use ~13 GB of the 16 GB, so no other GPU job during the campaign, including development tests in the main folder.
 
 ## 4. Order and decisions between queues

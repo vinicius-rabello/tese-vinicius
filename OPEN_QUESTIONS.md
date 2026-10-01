@@ -4,11 +4,7 @@ Points that need a decision, decisions already taken (kept for the record), and 
 
 ## Open
 
-1. **Two readings of the lambda rule to confirm (before the tag).** As implemented (DECISIONS.md, "Selection rules, a priori"):
-   - **(a) The 2% tie is measured against the lowest eps_hf.** Every candidate with eps_hf <= 1.02 x lowest ties, and the smallest tied lambda wins. The pairwise reading ("two lambdas within 2% of each other") can chain, e.g. 0.300 / 0.305 / 0.310, and give a different answer.
-   - **(b) lambda = 0 is the reference, never a candidate.** Block C is "the best lambda > 0", and `make_block_c.py` refuses 0. If lambda = 0 has the lowest eps_hf, the rule still picks among the lambda > 0 within the MSE bound.
-   - If no lambda > 0 meets the MSE bound, nothing is chosen and the decision comes back to you.
-2. **Queue `fase1` at the maximum length.** At 150 epochs per run it takes 62.7 GPU-h; at 300 epochs, about 125 h. Today's 27 h slot covers roughly A seed 0 up to SRNO at 150 epochs. Relaunching the same command continues it. Recompute with `gpu_hours.py --measured results` after A seed 0.
+1. **Queue `fase1` at the maximum length.** At 150 epochs per run it takes 62.7 GPU-h; at 300 epochs, about 125 h. Today's 27 h slot covers roughly A seed 0 up to SRNO at 150 epochs. Relaunching the same command continues it. Recompute with `gpu_hours.py --measured results` after A seed 0.
 
 ## Resolved (user answers, 2026-10-01)
 
@@ -24,6 +20,7 @@ Points that need a decision, decisions already taken (kept for the record), and 
 | R8 | Versioning `results/` | Out of git; `scripts/backup_results.sh` (light zip + best.pt list) | 766219a |
 | R9 | `--max-hours` | `run_queue.py --max-hours <h>` (e.g. 27), documented in RUNNING.md | 766219a |
 | R10 | Block B order in `fase1` | SRCNN's 4 runs before SRNO's 4 (already so) | 4db8079 |
+| R11 | Readings of the lambda rule | (a) 2% against the lowest eps_hf, the smallest lambda within it; (b) lambda = 0 never a candidate, no candidate -> back to the user | DECISIONS.md, commit before the tag |
 
 Also done on request: queues by priority (`queues/fase1-7.txt`, `scripts/run_queue.py`, 4db8079), `gpu_hours.py --measured` (bc0b5bc), worktree instructions (`RUNNING.md`). No tag was created and nothing was launched.
 

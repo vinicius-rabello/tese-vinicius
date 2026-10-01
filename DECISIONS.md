@@ -203,3 +203,8 @@ Written and committed before the tag `campanha-v1` and before any campaign run, 
 - Implementation: `evaluation/selection.py` (`tests/test_selection.py`). The pilot (2 epochs, lambda in {0, 0.1}) was used only to check that the tables are produced; it chooses nothing.
 - Baselines on validation: identity and Wiener at sigma = 0 and 1e-2 were evaluated with `--split val` (`results/baseline_*/*_val*`). The test files are unchanged (md5) and gamma is the same (1e-12, 0.01). Their `config.json` had been rewritten by that call with the same gamma: only the last digits of `val_mse_by_gamma` changed (GPU). `evaluate_run.py --split val` now keeps an existing `config.json` and refuses if gamma differs.
 - Figure titles in test mode changed from "Test ..." / "test set" to a split-aware label ("..., test set"); the data in the figures is unchanged.
+
+## Selection rules: readings confirmed by the user (2026-10-01, before the tag)
+
+- (a) The 2% tie is measured against the LOWEST eps_hf among the lambdas that pass the MSE bound, not between pairs of lambdas. Among the lambdas within 2% of that minimum, the SMALLEST lambda is chosen. The user's confirmation message first said "the largest"; asked about it, the user confirmed the smallest, as in the original rule and in `evaluation/selection.py`.
+- (b) lambda = 0 is only the reference (it sets the MSE bound and serves for comparison) and is never a candidate. If no lambda > 0 passes the MSE bound, nothing is chosen: the selection stops and the decision goes back to the user. In code: `select_lambda` returns None and says "no choice", and `collect_results.py --split val` then prints no `make_block_c.py` command.
