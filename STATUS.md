@@ -1,6 +1,6 @@
 # Campaign status
 
-Last updated: 2026-10-01 (after the user's answers to OPEN_QUESTIONS). Nothing of the campaign has been launched; no tag created. How to run it: `RUNNING.md`. Pilot and short measurements are in `results_pilot/` only (`results/` holds only the baselines). Open points: `OPEN_QUESTIONS.md`.
+Last updated: 2026-10-01 (a priori selection rules written; ready for the tag, waiting for the user's go-ahead). Nothing of the campaign has been launched; no tag created. How to run it: `RUNNING.md`. Pilot and short measurements are in `results_pilot/` only (`results/` holds only the baselines). Open points: `OPEN_QUESTIONS.md`.
 
 ## Pipeline stages
 
@@ -31,7 +31,10 @@ Last updated: 2026-10-01 (after the user's answers to OPEN_QUESTIONS). Nothing o
 | Legacy multistage archived in `archive/legacy_multistage/` | done | 133e3fa |
 | `gpu_hours.py --measured`, decided composition, hours per queue | done | bc0b5bc |
 | Queues `queues/fase1-7.txt` + `scripts/run_queue.py` | done | 4db8079 |
-| `RUNNING.md` (worktree at `campanha-v1`), this update | done | last commit |
+| `RUNNING.md` (worktree at `campanha-v1`) | done | 3d0d0a4 |
+| `make_block_c.py` / `make_block_n.py`: `--lambda-cnn`, `--lambda-op` | done | 29250b9 |
+| `run_queue.py --max-hours` documented (e.g. 27); `scripts/backup_results.sh` | done | 766219a |
+| A priori selection rules (DECISIONS.md); `--split val` in `evaluate_run.py` and `collect_results.py`; `eps_hf`; `selecao_lambda_<arch>.csv`; validation dates; baselines on validation | done | last commit |
 
 ## Tests (all pass, run on 2026-10-01 after the last code commit; log `results_pilot/tests.log`)
 
@@ -46,6 +49,7 @@ Last updated: 2026-10-01 (after the user's answers to OPEN_QUESTIONS). Nothing o
 | `tests/test_resume.py` (GPU) | 2/2 | old |
 | `tests/test_stats.py` | 13/13 | new (4.6; + multistage with 4.7; + k_c_01 / censoring) |
 | `tests/test_multistage.py` | 12/12 | new (4.7) |
+| `tests/test_selection.py` | 12/12 | new (lambda rule, families, validation split) |
 
 ## Decisions taken
 
@@ -59,6 +63,8 @@ Last updated: 2026-10-01 (after the user's answers to OPEN_QUESTIONS). Nothing o
 - KE/WKE secondary in the noisy regime, always next to eps(k), k_c and T(k).
 - k_c reported with two thresholds (eps <= 0.5: `k_c`; eps <= 0.1: `k_c_01`) and a censoring marker when it reaches the last shell (shown as `63+`).
 - Budget: no cuts in A and C; block D only on SRCNN, DSC/MS, SRNO.
+- **Selection (a priori, on validation only):** E architecture = lowest validation MSE of A seed 0; lambda = lowest eps_hf (mean eps(k), k >= D0, validation) among lambda > 0 with validation MSE <= 1.10 x lambda = 0, ties within 2% -> smaller lambda; SRCNN and SRNO sweeps, per family if they differ; regime B reuses them, the noisy SRCNN sweep is sensitivity only.
+- `results/` stays out of git; backup with `scripts/backup_results.sh`.
 - Regime B: 5 MSE + 5 best lambda + lambda sweep on SRCNN = 13 runs, seed 0, after the advisor's approval.
 - Block E: stage 1 = block A run (MSE, seed 0) of the best architecture of A; stages 2-4 with min 50 epochs; control with the measured epochs of stages 1 + 2.
 - Multistage (4.7): stage n = stage n-1 (frozen) + eps_n f_n(x) on the original input, eps_n = RMS of the previous residual on the training set, f_n trained with MSE on the normalized residual, `RESIDUAL: false`, `LAMBDA: 0`; clipping 0.5 and weight decay 1e-4 for every run (already the `train.py` setting); control = single stage for the measured epochs of stage 1 + stage 2. Details in `DECISIONS.md`.
@@ -161,8 +167,8 @@ With sigma = 1e-2: Wiener MSE 2.28e-3, PSNR 41.05, k_c 22 (`tables/wiener_noise_
 
 ## Next steps (nothing launched until you confirm)
 
-1. Your answers to `OPEN_QUESTIONS.md` items 1-2 (selection criterion on validation; versioning of `results/`).
-2. On your go-ahead: tag `campanha-v1`, create the worktree and launch `fase1` (`RUNNING.md`, sections 2-3).
-3. After A seed 0: `python scripts/gpu_hours.py --measured results`; choose the architecture for E.
-4. After B: choose lambda; generate C; `fase2`, `fase3`, `fase4`, `fase5`; generate E, `fase6`.
-5. Regime B (`fase7`) after the advisor's approval.
+1. Confirm the two readings of the lambda rule (`OPEN_QUESTIONS.md`, item 1).
+2. On your go-ahead: tag `campanha-v1`, create the worktree, launch `fase1` (`RUNNING.md`, sections 2-3; e.g. `--max-hours 27` today).
+3. After A seed 0: `python scripts/gpu_hours.py --measured results`; architecture for E by validation MSE.
+4. After B: `python collect_results.py --split val --runs "A_*_seed0" "B_*"` -> `selecao_lambda_*.csv` and the `make_block_c.py` command; generate C; `fase2`..`fase5`; generate E, `fase6`.
+5. Regime B (`fase7`) after the advisor's approval, with the same lambda(s).

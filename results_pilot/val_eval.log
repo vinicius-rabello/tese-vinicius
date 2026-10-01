@@ -1,0 +1,11 @@
+results_pilot/P_dscms_res_lam0.1_seed0 [val]: mse 0.002744 psnr 40.294 ssim 0.9690
+results_pilot/P_dscms_res_lam0_seed0 [val]: mse 0.002729 psnr 40.342 ssim 0.9691
+results_pilot/P_prusr_res_lam0.1_seed0 [val]: mse 0.00151 psnr 42.882 ssim 0.9755
+results_pilot/P_prusr_res_lam0_seed0 [val]: mse 0.00182 psnr 42.105 ssim 0.9733
+results_pilot/P_sofono_res_lam0.1_seed0 [val]: mse 0.0005787 psnr 47.119 ssim 0.9897
+results_pilot/P_sofono_res_lam0_seed0 [val]: mse 0.001039 psnr 44.583 ssim 0.9822
+results_pilot/P_srcnn_res_lam0.1_seed0 [val]: mse 0.002174 psnr 41.317 ssim 0.9750
+results_pilot/P_srcnn_res_lam0_seed0 [val]: mse 0.002001 psnr 41.697 ssim 0.9738
+results_pilot/P_srno_res_lam0.1_seed0 [val]: mse 0.0007055 psnr 46.236 ssim 0.9882
+results_pilot/P_srno_res_lam0_seed0 [val]: mse 0.001117 psnr 44.271 ssim 0.9813
+DONE

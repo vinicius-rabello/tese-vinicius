@@ -1,0 +1,3 @@
+sweep_arch,run_id,lambda,mse_val,mse_val_ratio,mse_within_10pct,eps_hf_val,eps_hf_vs_lowest,candidate,tied_with_lowest,chosen,rule
+srno,P_srno_res_lam0_seed0,0.0,0.001117197361299526,1.0,True,0.31942716240882874,0.30619440770662476,False,False,False,candidates (MSE <= 1.1 x lambda=0): 0.1; lowest eps_hf 0.24455; within 2%: 0.1; chosen (smallest): 0.1
+srno,P_srno_res_lam0.1_seed0,0.1,0.0007054984856447238,0.6314895738959557,True,0.24454794824123383,0.0,True,True,True,candidates (MSE <= 1.1 x lambda=0): 0.1; lowest eps_hf 0.24455; within 2%: 0.1; chosen (smallest): 0.1

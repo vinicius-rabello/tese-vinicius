@@ -2,6 +2,7 @@
 
     python evaluate_run.py results/<run_id> [results/<run_id> ...]
     python evaluate_run.py --baseline identity wiener
+    python evaluate_run.py --split val results/<run_id> ...   # validation set (model selection)
 
 Writes, per run (or results/baseline_<name>/):
     metrics_per_sample.csv  one row per test day: date, MSE, PSNR, SSIM, KE, WKE,
@@ -9,6 +10,10 @@ Writes, per run (or results/baseline_<name>/):
     spectra.npz             per-sample radial spectra of the prediction and the
                             target, and rho(k), for the figures and the slope
     eval_summary.json       means over the test set
+
+With --split val the same files get the suffix _val (metrics_per_sample_val.csv,
+spectra_val.npz, eval_summary_val.json), so validation metrics, used to select
+lambda and the architecture of block E, never mix with the test metrics.
 
 Everything a model needs (architecture, residual, the fixed constants) is read
 from the run's config.json. If it is missing, the run is refused rather than
@@ -34,6 +39,8 @@ from models.model_factory import create_model
 TEST_FILES = [f"./hycom_numpy/hycom_{y}.npy" for y in (2022, 2023, 2024)]
 VAL_FILES = ["./hycom_numpy/hycom_2020.npy", "./hycom_numpy/hycom_2021.npy"]
 DATES_CSV = os.path.join(os.path.dirname(os.path.abspath(__file__)), "evaluation", "test_dates.csv")
+VAL_DATES_CSV = os.path.join(os.path.dirname(DATES_CSV), "val_dates.csv")
+SPLIT_SUFFIX = {'test': '', 'val': '_val'}  # file-name suffix of each split's outputs
 CONSTANT_KEYS = ('psnr_ssim_R', 'hr_train_min', 'lpips_scale')
 
 
@@ -88,16 +95,17 @@ def run_noise_std(meta):
     return float(meta.get('noise_std', 0.0))
 
 
-def read_dates():
-    with open(DATES_CSV) as f:
+def read_dates(split='test'):
+    with open(DATES_CSV if split == 'test' else VAL_DATES_CSV) as f:
         return [row['date'] for row in csv.DictReader(f)]
 
 
-def evaluate(predict, constants, out_dir, loader, device, with_lpips=True, dates=None):
+def evaluate(predict, constants, out_dir, loader, device, with_lpips=True, dates=None, split='test'):
     """Runs predict(lr) over the test loader and writes the per-sample metrics.
     `dates` defaults to the full test set's; pass a slice only with a matching subset loader."""
     os.makedirs(out_dir, exist_ok=True)
-    dates = read_dates() if dates is None else dates
+    dates = read_dates(split) if dates is None else dates
+    suffix = SPLIT_SUFFIX[split]
     lpips_models = {net: build_lpips(net, device) for net in ('vgg', 'alex')} if with_lpips else {}
     rows, pred_spectra, target_spectra, rhos = [], [], [], []
     powers = {'pred': [], 'target': [], 'error': []}
@@ -126,6 +134,8 @@ def evaluate(predict, constants, out_dir, loader, device, with_lpips=True, dates
             batch['k_c_01'] = sm.effective_resolution_eps(eps_sample, sm.K_C_THRESHOLDS['k_c_01'])
             for name in ('k_c', 'k_c_01'):
                 batch[f'{name}_censurado'] = sm.k_c_censored(batch[name], eps_sample.shape[-1]).float()
+            # eps_hf: mean of eps(k) over the shells k >= D0 (this sample).
+            batch['eps_hf'] = eps_sample[:, int(sm.D0) - 1:].mean(-1)
             for b, name in enumerate(sm.BAND_NAMES):
                 batch[f'band_{name}'] = bands[:, b]
             batch['band_k_ge_D0'] = bands[:, 2:].sum(1)
@@ -143,11 +153,11 @@ def evaluate(predict, constants, out_dir, loader, device, with_lpips=True, dates
 
     if index != len(dates):
         raise RuntimeError(f"Evaluated {index} samples but {len(dates)} dates were given.")
-    with open(os.path.join(out_dir, 'metrics_per_sample.csv'), 'w', newline='') as f:
+    with open(os.path.join(out_dir, f'metrics_per_sample{suffix}.csv'), 'w', newline='') as f:
         writer = csv.DictWriter(f, fieldnames=list(rows[0]))
         writer.writeheader()
         writer.writerows(rows)
-    np.savez_compressed(os.path.join(out_dir, 'spectra.npz'),
+    np.savez_compressed(os.path.join(out_dir, f'spectra{suffix}.npz'),
                         k=np.arange(1, torch.cat(pred_spectra).shape[1] + 1),
                         pred=torch.cat(pred_spectra).numpy(), target=torch.cat(target_spectra).numpy(),
                         rho=torch.cat(rhos).numpy(), dates=np.array(dates),
@@ -156,8 +166,8 @@ def evaluate(predict, constants, out_dir, loader, device, with_lpips=True, dates
     metric_keys = [k for k in rows[0] if k not in ('index', 'date')]
     summary = {k: float(np.mean([r[k] for r in rows])) for k in metric_keys}
     pooled = pooled_spectral(*(torch.cat(powers[name]) for name in ('pred', 'target', 'error')))
-    with open(os.path.join(out_dir, 'eval_summary.json'), 'w') as f:
-        json.dump({'n_samples': index, 'means': summary, 'pooled': pooled, 'constants': constants}, f, indent=2)
+    with open(os.path.join(out_dir, f'eval_summary{suffix}.json'), 'w') as f:
+        json.dump({'split': split, 'n_samples': index, 'means': summary, 'pooled': pooled, 'constants': constants}, f, indent=2)
     return summary
 
 
@@ -173,6 +183,9 @@ def pooled_spectral(pred_power, target_power, error_power):
         'T_k_ge_D0': float(T[high].mean()),
         'eps_k_ge_D0': float(e[high].sum() / t[high].sum()),
         'k_c_01': float(sm.effective_resolution_eps(eps, sm.K_C_THRESHOLDS['k_c_01'])),
+        # eps_hf: mean of the pooled eps(k) over the shells k >= D0 (each shell
+        # weighs the same; eps_k_ge_D0 above weighs them by target power).
+        'eps_hf': float(eps[high].mean()),
     }
     for name in ('k_c', 'k_c_01'):
         out[f'{name}_censurado'] = bool(sm.k_c_censored(out[name], len(eps)))
@@ -193,12 +206,15 @@ def main():
     parser.add_argument('--device', default='cuda' if torch.cuda.is_available() else 'cpu')
     parser.add_argument('--batch-size', type=int, default=16)
     parser.add_argument('--no-lpips', action='store_true')
+    parser.add_argument('--split', choices=SPLIT_SUFFIX, default='test',
+                        help="test (default) or val: validation metrics, written to *_val files")
     parser.add_argument('--noise-std', type=float, default=0.0,
                         help="observation noise (m/s) for the baselines; runs use their own config.json value")
     args = parser.parse_args()
 
     loaders = {}
-    get_loader = lambda noise: loaders.setdefault(noise, test_loader(args.batch_size, noise))  # noqa: E731
+    make_loader = test_loader if args.split == 'test' else val_loader
+    get_loader = lambda noise: loaders.setdefault(noise, make_loader(args.batch_size, noise))  # noqa: E731
     failures = []
 
     for run_dir in args.runs:
@@ -209,8 +225,9 @@ def main():
             failures.append(run_dir)
             continue
         constants = {k: meta[k] for k in CONSTANT_KEYS}
-        summary = evaluate(model, constants, run_dir, get_loader(run_noise_std(meta)), args.device, not args.no_lpips)
-        print(f"{run_dir}: mse {summary['mse']:.4g} psnr {summary['psnr']:.3f} ssim {summary['ssim']:.4f}")
+        summary = evaluate(model, constants, run_dir, get_loader(run_noise_std(meta)), args.device, not args.no_lpips,
+                           split=args.split)
+        print(f"{run_dir} [{args.split}]: mse {summary['mse']:.4g} psnr {summary['psnr']:.3f} ssim {summary['ssim']:.4f}")
 
     if args.baseline:
         constants = training_constants()
@@ -226,9 +243,18 @@ def main():
                              'val_mse_by_gamma': curve})
                 predict = lambda lr, g=gamma: baselines.wiener(lr, g)  # noqa: E731
             os.makedirs(out_dir, exist_ok=True)
-            with open(os.path.join(out_dir, 'config.json'), 'w') as f:
-                json.dump(meta, f, indent=2)
-            summary = evaluate(predict, constants, out_dir, get_loader(args.noise_std), args.device, not args.no_lpips)
+            config_path = os.path.join(out_dir, 'config.json')
+            if args.split == 'val' and os.path.exists(config_path):
+                # Keep the config of the test evaluation; gamma must be the same.
+                with open(config_path) as f:
+                    kept = json.load(f)
+                if kept.get('gamma') != meta.get('gamma'):
+                    raise RuntimeError(f"{out_dir}: gamma {meta.get('gamma')} now vs {kept.get('gamma')} in config.json")
+            else:
+                with open(config_path, 'w') as f:
+                    json.dump(meta, f, indent=2)
+            summary = evaluate(predict, constants, out_dir, get_loader(args.noise_std), args.device, not args.no_lpips,
+                               split=args.split)
             print(f"baseline {name}: mse {summary['mse']:.4g} psnr {summary['psnr']:.3f} ssim {summary['ssim']:.4f}"
                   + (f" (gamma {meta['gamma']:.3g})" if name == 'wiener' else ""))
 

@@ -8,6 +8,15 @@ and runs/<run_id>/ with each run's config.json, summary.json, train_log.csv.
 A finished run without test metrics is evaluated once (test set, no_grad) and
 its test means are written into summary.json, so the next call doesn't repeat
 it; --no-eval leaves those columns empty instead.
+
+    python collect_results.py --split val [--out report/<timestamp>_val/]
+
+Validation metrics (for model selection; never the test set): reads and, if
+missing, writes the *_val files of evaluate_run.py --split val, and every
+output gets the suffix _val (all_runs_val.csv, baselines_val.csv,
+report_val.md, figures). It also applies the a priori lambda rule
+(evaluation/selection.py, DECISIONS.md) to the SRCNN and SRNO sweeps and
+writes selecao_lambda_srcnn.csv / selecao_lambda_srno.csv.
 """
 
 import argparse
@@ -43,7 +52,21 @@ RUN_COLS = ['run_id', 'status', 'arquitetura', 'perda', 'lambda', 'semente', 're
 # stricter threshold eps <= 0.1 (test set pooled), and censoring markers
 # (True = k_c reached the last shell, so the value is only a lower bound).
 K_C_EXTRA = ['k_c_01', 'k_c_censurado', 'k_c_01_censurado']
-RUN_COLS += K_C_EXTRA
+# eps_hf: mean of the pooled eps(k) over the shells k >= D0 (the lambda selection metric).
+POOLED_EXTRA = K_C_EXTRA + ['eps_hf']
+RUN_COLS += POOLED_EXTRA
+# Split read and reported: 'test' (default, files without suffix) or 'val'
+# (--split val: *_val files written by evaluate_run.py --split val, and every
+# output file of this script gets _val too). Set once in main().
+SPLIT = 'test'
+
+
+def sfx():
+    return '' if SPLIT == 'test' else f'_{SPLIT}'
+
+
+def split_name():
+    return 'test set' if SPLIT == 'test' else 'validation set'
 # Spectral-slope fitting range (k, cycles per domain), confirmed by the user
 # (proposal: scripts/propose_slope_range.py, target slope -2.11 over it).
 SLOPE_RANGE = (11, 46)
@@ -75,7 +98,7 @@ def to_float(value):
 def test_means(run_dir):
     """Test-set means from metrics_per_sample.csv (and the slope from
     spectra.npz once SLOPE_RANGE is set). Empty dict if not evaluated yet."""
-    rows = read_csv(os.path.join(run_dir, 'metrics_per_sample.csv'))
+    rows = read_csv(os.path.join(run_dir, f'metrics_per_sample{sfx()}.csv'))
     if not rows:
         return {}
     col = lambda name: np.array([to_float(r[name]) for r in rows]) if name in rows[0] else None  # noqa: E731
@@ -88,7 +111,7 @@ def test_means(run_dir):
     pooled = pooled_from_npz(run_dir)
     if pooled:
         out.update({'k_c': pooled['k_c'], 'T_k': pooled['T_k_ge_D0'], 'eps_k': pooled['eps_k_ge_D0']})
-        out.update({c: pooled[c] for c in K_C_EXTRA})
+        out.update({c: pooled[c] for c in POOLED_EXTRA})
     for i, name in enumerate(BAND_NAMES):
         if col(f'band_{name}') is not None:
             out[BAND_COLS[i]] = float(np.mean(col(f'band_{name}')))
@@ -98,10 +121,10 @@ def test_means(run_dir):
         out['lpips_apendice'] = float(np.mean(col('lpips_alex')))
     if col('lpips_vgg') is not None:
         out['lpips_vgg'] = float(np.mean(col('lpips_vgg')))
-    if SLOPE_RANGE is not None and os.path.exists(os.path.join(run_dir, 'spectra.npz')):
+    if SLOPE_RANGE is not None and os.path.exists(os.path.join(run_dir, f'spectra{sfx()}.npz')):
         import torch
         from evaluation.spectral_metrics import spectral_slope
-        spec = torch.from_numpy(np.load(os.path.join(run_dir, 'spectra.npz'))['pred'])
+        spec = torch.from_numpy(np.load(os.path.join(run_dir, f'spectra{sfx()}.npz'))['pred'])
         out['inclinacao_espectral'] = float(spectral_slope(spec, *SLOPE_RANGE).mean())
     return out
 
@@ -109,7 +132,7 @@ def test_means(run_dir):
 def pooled_from_npz(run_dir):
     """Test-set T(k), eps(k), k_c from the shell sums in spectra.npz (None for
     evaluations made before those sums were stored)."""
-    path = os.path.join(run_dir, 'spectra.npz')
+    path = os.path.join(run_dir, f'spectra{sfx()}.npz')
     if not os.path.exists(path):
         return None
     d = np.load(path)
@@ -129,16 +152,17 @@ def num_mean(values):
 
 
 def evaluate_missing(run_dir, device, with_lpips):
-    """Evaluates a finished run that has no test metrics yet and records the
-    test means in summary.json, so this happens once per run."""
+    """Evaluates a finished run that has no metrics of SPLIT yet and records
+    the means in summary.json (test_metrics / val_metrics), once per run."""
     import evaluate_run
     model, meta = evaluate_run.load_model(run_dir, device)
     constants = {k: meta[k] for k in evaluate_run.CONSTANT_KEYS}
-    evaluate_run.evaluate(model, constants, run_dir, evaluate_run.test_loader(16, evaluate_run.run_noise_std(meta)),
-                          device, with_lpips)
+    make_loader = evaluate_run.test_loader if SPLIT == 'test' else evaluate_run.val_loader
+    evaluate_run.evaluate(model, constants, run_dir, make_loader(16, evaluate_run.run_noise_std(meta)),
+                          device, with_lpips, split=SPLIT)
     summary_path = os.path.join(run_dir, 'summary.json')
     summary = read_json(summary_path)
-    summary['test_metrics'] = test_means(run_dir)
+    summary[f'{SPLIT}_metrics'] = test_means(run_dir)
     with open(summary_path, 'w') as f:
         json.dump(summary, f, indent=2)
 
@@ -169,7 +193,7 @@ def run_row(run_id, run_dir):
         'escala_lpips': config.get('lpips_scale', ''),
         'best_val_mse': summary.get('best_val_mse', ''),
     }
-    for m in METRIC_COLS + K_C_EXTRA:
+    for m in METRIC_COLS + POOLED_EXTRA:
         row[m] = ''
     row.update(test_means(run_dir))
     return row
@@ -177,6 +201,7 @@ def run_row(run_id, run_dir):
 
 # ------------------------------------------------------------------ figures --
 def save(fig, out_dir, name):
+    name += sfx()
     fig.savefig(os.path.join(out_dir, f'{name}.png'), dpi=200, bbox_inches='tight', metadata=FIG_META['png'])
     fig.savefig(os.path.join(out_dir, f'{name}.pdf'), bbox_inches='tight', metadata=FIG_META['pdf'])
     plt.close(fig)
@@ -191,7 +216,7 @@ def group_key(row):
 
 
 def mean_spectra(run_dir):
-    path = os.path.join(run_dir, 'spectra.npz')
+    path = os.path.join(run_dir, f'spectra{sfx()}.npz')
     if not os.path.exists(path):
         return None
     d = np.load(path)
@@ -235,7 +260,7 @@ def figure_spectra_rho_bands(groups, results_dir, baselines_dir, out_dir):
         ax.axvline(D0, color='gray', ls=':', lw=1)
         ax.set_xlabel('Wavenumber k (cycles per 128-px domain; 1 px = 0.04°)')
         ax.set_ylabel('Kinetic energy E(k) (m²/s²)')
-        ax.set_title(f'Radial KE spectrum, test set mean -- {key}')
+        ax.set_title(f'Radial KE spectrum, {split_name()} mean -- {key}')
         ax.grid(True, which='both', ls='--', alpha=0.3)
         ax.legend(fontsize=8)
         save(fig, out_dir, f'spectra_{key}')
@@ -250,7 +275,7 @@ def figure_spectra_rho_bands(groups, results_dir, baselines_dir, out_dir):
         ax.set_xlabel('Wavenumber k (cycles per 128-px domain)')
         ax.set_ylabel('Phase coherence ρ(k) (dimensionless)')
         ax.set_ylim(0, 1.02)
-        ax.set_title(f'Phase coherence ρ(k) (blind to blur), test set mean -- {key}')
+        ax.set_title(f'Phase coherence ρ(k) (blind to blur), {split_name()} mean -- {key}')
         ax.grid(True, ls='--', alpha=0.3)
         ax.legend(fontsize=8)
         save(fig, out_dir, f'rho_k_{key}')
@@ -271,7 +296,7 @@ def figure_spectra_rho_bands(groups, results_dir, baselines_dir, out_dir):
         ax.set_yscale('log')
         ax.set_xlabel(f'Radial band of k (cycles per domain); D0 = {D0:g}')
         ax.set_ylabel('Error in band (m²/s²)')
-        ax.set_title(f'Test error by radial band -- {key}')
+        ax.set_title(f'Error by radial band, {split_name()} -- {key}')
         ax.grid(True, axis='y', ls='--', alpha=0.3)
         ax.legend(fontsize=8)
         save(fig, out_dir, f'error_by_band_{key}')
@@ -299,7 +324,7 @@ def figure_amplitude(key, archs, identity, wiener, out_dir):
         ax.axvline(D0, color='gray', ls=':', lw=1)
         ax.set_xlabel('Wavenumber k (cycles per 128-px domain)')
         ax.set_ylabel(f'{ylabel} (dimensionless)')
-        ax.set_title(f'{ylabel.split(" = ")[0]}, test set -- {key}')
+        ax.set_title(f'{ylabel.split(" = ")[0]}, {split_name()} -- {key}')
         ax.grid(True, which='both', ls='--', alpha=0.3)
         ax.legend(fontsize=8)
         save(fig, out_dir, f'{name}_{key}')
@@ -344,7 +369,7 @@ def figure_lambda_sweep(rows, out_dir):
         lams = sorted({r['lambda'] for r in rs})
         mean = lambda col, lam: num_mean([r[col] for r in rs if r['lambda'] == lam])  # noqa: E731
         for ax, col, label in zip(axes, ('mse', 'ke', 'k_c'),
-                                  ('Test MSE (m²/s²)', 'Test KE (log-spectral, dimensionless)',
+                                  (f'MSE, {split_name()} (m²/s²)', f'KE, {split_name()} (log-spectral, dimensionless)',
                                    'Effective resolution k_c (cycles per domain)')):
             ax.plot(lams, [mean(col, lam) for lam in lams], marker='o', label=arch)
             ax.set_xscale('symlog', linthresh=min(l for l in lams if l > 0))
@@ -382,7 +407,7 @@ def alerts(rows, results_dir):
             out.append(f"{rid}: trained on a dirty tree (uncommitted changes).")
         if len(rs) > 1 and r['R_psnr'] != '':
             out.append(f"{rid}: R_psnr = {r['R_psnr']} differs across runs ({sorted(rs)}).")
-        samples = read_csv(os.path.join(results_dir, rid, 'metrics_per_sample.csv'))
+        samples = read_csv(os.path.join(results_dir, rid, f'metrics_per_sample{sfx()}.csv'))
         if samples and r['R_psnr'] != '':
             worst = max(abs(to_float(s['psnr']) - 10 * math.log10(r['R_psnr'] ** 2 / to_float(s['mse'])))
                         for s in samples)
@@ -407,12 +432,13 @@ def fmt_kc(row, col):
     return text + '+' if col in ('k_c', 'k_c_01') and row.get(f'{col}_censurado') is True else text
 
 
-def write_report(rows, baseline_rows, alert_lines, figures, out_dir):
-    lines = ["# Results report", ""]
+def write_report(rows, baseline_rows, alert_lines, figures, out_dir, selection_lines=()):
+    lines = ["# Results report" + ("" if SPLIT == 'test' else f" ({split_name()})"), ""]
+    selection_lines = list(selection_lines)
     lines += ["## Alerts", ""] + ([f"- {a}" for a in alert_lines] or ["- none"]) + [""]
     done = sorted([r for r in rows if r['mse'] != ''], key=lambda r: r['mse'])
     pending = [r for r in rows if r['mse'] == '']
-    lines += ["## Runs (test set, m/s, fixed R), sorted by MSE", ""]
+    lines += [f"## Runs ({split_name()}, m/s, fixed R), sorted by MSE", ""]
     head = ['run_id', 'epocas', 'motivo_parada', 'mse', 'psnr', 'ssim', 'ke', 'wke', 'e_banda_k_ge_D0', 'k_c', 'k_c_fase',
             'eps_k',
             'best_val_mse', 'k_c_01']
@@ -445,9 +471,38 @@ def write_report(rows, baseline_rows, alert_lines, figures, out_dir):
                   "|---|---|---|---|---|---|---|---|---|"] + diffs
     else:
         lines += ["(no architecture has both an MSE and an MSE+LPIPS run yet)"]
+    lines += selection_lines
     lines += ["", "## Figures", ""] + [f"- {f}" for f in figures]
-    with open(os.path.join(out_dir, 'report.md'), 'w') as f:
+    with open(os.path.join(out_dir, f'report{sfx()}.md'), 'w') as f:
         f.write("\n".join(lines) + "\n")
+
+
+def lambda_selection(rows, out_dir):
+    """--split val: the a priori lambda rule (evaluation/selection.py) on the
+    SRCNN and SRNO sweeps (lambda = 0: block A seed 0; lambda > 0: block B),
+    one selecao_lambda_<arch>.csv per sweep; returns the report lines."""
+    from evaluation.selection import TABLE_COLS, family_lambdas, select_lambda
+    lines, chosen = ["", "## Lambda selection (a priori rule, validation set)", ""], {}
+    for arch in ('srcnn', 'srno'):
+        runs = [r for r in rows if r['arquitetura'] == arch and r['residual'] is True and not r['ruido']
+                and r['estagio'] == '' and r['semente'] == 0 and r['mse'] != '' and r['eps_hf'] != '']
+        lams = [r['lambda'] for r in runs]
+        if 0 not in lams or len(lams) < 2:
+            lines.append(f"- {arch}: not enough evaluated runs (lambda = 0 and at least one lambda > 0 on validation).")
+            continue
+        if len(set(lams)) != len(lams):
+            raise SystemExit(f"{arch}: more than one seed-0 run per lambda: {sorted(r['run_id'] for r in runs)}")
+        table, chosen[arch], why = select_lambda(arch, [{'run_id': r['run_id'], 'lambda': r['lambda'],
+                                                          'mse_val': r['mse'], 'eps_hf_val': r['eps_hf']} for r in runs])
+        write_csv(os.path.join(out_dir, f'selecao_lambda_{arch}.csv'), table, TABLE_COLS)
+        lines.append(f"- {arch}: {why} (`selecao_lambda_{arch}.csv`)")
+    per_arch, args = family_lambdas(chosen)
+    if args:
+        lines.append(f"- Decision: `python scripts/make_block_c.py {args} --sweep-arch srno srcnn`; "
+                     + ", ".join(f"{a} {lam:g}" for a, lam in per_arch.items()))
+    for line in lines[3:]:
+        print(line)
+    return lines
 
 
 def write_csv(path, rows, cols):
@@ -470,10 +525,14 @@ def main():
     parser.add_argument('--no-eval', action='store_true', help="don't evaluate finished runs lacking test metrics")
     parser.add_argument('--no-lpips', action='store_true', help='skip LPIPS when evaluating missing runs')
     parser.add_argument('--device', default=None)
+    parser.add_argument('--split', choices=('test', 'val'), default='test',
+                        help="val: validation metrics (model selection), all outputs with the suffix _val")
     args = parser.parse_args()
+    global SPLIT
+    SPLIT = args.split
 
     stamp = datetime.now().strftime('%Y%m%d-%H%M')
-    out_dir = args.out or os.path.join('report', stamp)
+    out_dir = args.out or os.path.join('report', stamp + sfx())
     os.makedirs(out_dir, exist_ok=True)
     patterns = [p for item in args.runs for p in item.replace(',', ' ').split()]
 
@@ -484,16 +543,16 @@ def main():
     for run_id in run_ids:
         run_dir = os.path.join(args.results_dir, run_id)
         summary = read_json(os.path.join(run_dir, 'summary.json')) or {}
-        evaluated = os.path.exists(os.path.join(run_dir, 'metrics_per_sample.csv'))
+        evaluated = os.path.exists(os.path.join(run_dir, f'metrics_per_sample{sfx()}.csv'))
         if summary.get('status') in COMPLETE and not evaluated and not args.no_eval:
             import torch
             device = args.device or ('cuda' if torch.cuda.is_available() else 'cpu')
-            print(f"Evaluating {run_id} on the test set ({device}) ...")
+            print(f"Evaluating {run_id} on the {split_name()} ({device}) ...")
             evaluate_missing(run_dir, device, not args.no_lpips)
         rows.append(run_row(run_id, run_dir))
         target = os.path.join(out_dir, 'runs', run_id)
         os.makedirs(target, exist_ok=True)
-        for name in ('config.json', 'summary.json', 'train_log.csv', 'eval_summary.json'):
+        for name in ('config.json', 'summary.json', 'train_log.csv', f'eval_summary{sfx()}.json'):
             if os.path.exists(os.path.join(run_dir, name)):
                 shutil.copyfile(os.path.join(run_dir, name), os.path.join(target, name))
 
@@ -503,12 +562,12 @@ def main():
         if means:
             config = read_json(os.path.join(args.results_dir, folder, 'config.json')) or {}
             row = {'baseline': folder[len('baseline_'):], 'ruido': config.get('noise_std', 0.0),
-                   'gamma': config.get('gamma', ''), **{c: '' for c in METRIC_COLS + K_C_EXTRA}, **means}
+                   'gamma': config.get('gamma', ''), **{c: '' for c in METRIC_COLS + POOLED_EXTRA}, **means}
             baseline_rows.append(row)
 
-    write_csv(os.path.join(out_dir, 'all_runs.csv'), rows, RUN_COLS)
-    write_csv(os.path.join(out_dir, 'baselines.csv'), baseline_rows,
-              ['baseline', 'ruido', 'gamma', *METRIC_COLS, *K_C_EXTRA])
+    write_csv(os.path.join(out_dir, f'all_runs{sfx()}.csv'), rows, RUN_COLS)
+    write_csv(os.path.join(out_dir, f'baselines{sfx()}.csv'), baseline_rows,
+              ['baseline', 'ruido', 'gamma', *METRIC_COLS, *POOLED_EXTRA])
 
     groups = {}
     for r in rows:
@@ -518,7 +577,8 @@ def main():
     figure_lambda_sweep(rows, out_dir)
     figures = sorted(f for f in os.listdir(out_dir) if f.endswith('.png'))
 
-    write_report(rows, baseline_rows, alerts(rows, args.results_dir), figures, out_dir)
+    selection = lambda_selection(rows, out_dir) if SPLIT == 'val' else ()
+    write_report(rows, baseline_rows, alerts(rows, args.results_dir), figures, out_dir, selection)
 
     zip_path = os.path.join(os.path.dirname(os.path.normpath(out_dir)) or '.',
                             f"report_{os.path.basename(os.path.normpath(out_dir))}.zip")

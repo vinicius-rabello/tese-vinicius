@@ -1,0 +1,5 @@
+baseline identity: mse 0.004028 psnr 38.687 ssim 0.9628
+baseline wiener: mse 0.0002832 psnr 50.254 ssim 0.9970 (gamma 1e-12)
+baseline identity: mse 0.004127 psnr 38.570 ssim 0.9599
+baseline wiener: mse 0.00203 psnr 41.646 ssim 0.9775 (gamma 0.01)
+DONE

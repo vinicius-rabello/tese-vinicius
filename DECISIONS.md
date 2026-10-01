@@ -182,3 +182,24 @@ One line per decision not covered by the instructions, with the reason.
 - Queues in priority order (`queues/fase1.txt` .. `fase7.txt`): A seed 0 (SRCNN, DSC/MS, PRUSR, SRNO, SoFoNO) then B; C seed 0; D; A seeds 1-2; C seeds 1-2; E; regime B. Lines are paths or glob patterns (for configs generated later); `scripts/run_queue.py` resolves them in order without repeats, refuses a line that matches nothing (naming the generator), trains with one `train.py --config ... --max-hours 70` call and then evaluates the finished runs that have no test metrics.
 - The campaign runs from a linked git worktree at a `campanha-*` tag (`RUNNING.md`); `run_queue.py` refuses to start anywhere else, including the main folder right after tagging (checked with `git rev-parse --git-dir` vs `--git-common-dir`). Results go to the main folder's `results/` through a symlink in the worktree.
 - `gpu_hours.py --measured results`: seconds per epoch (mean over epochs 2..) and epochs per run (mean `epochs_completed` per architecture and lambda group, falling back to the other lambda group, then to 150 epochs marked *) from finished single-stage runs.
+
+## Selection rules, a priori (user decision, written 2026-10-01, before any campaign result)
+
+Written and committed before the tag `campanha-v1` and before any campaign run, so the choices below cannot be adapted to the results.
+
+- **Selection always on the validation set (2020-2021, 731 days), never on the test set.** Tools: `evaluate_run.py --split val` and `collect_results.py --split val`. They write `*_val` files (`metrics_per_sample_val.csv`, `spectra_val.npz`, `eval_summary_val.json`, `all_runs_val.csv`, `report_val.md`, `selecao_lambda_<arch>.csv`), separate from the test files. Validation noise (regime B) is the fixed per-sample noise with offset 1,000,000, the same as during training.
+- **Best architecture of block A (for block E): the lowest validation MSE, seed 0.** This is `mse` in `all_runs_val.csv`, the mean over validation days of the MSE of `best.pt`. It equals `best_val_mse` of the training log; checked on the pilot, e.g. SRCNN 0.002001 vs 0.00200118.
+- **eps_hf** is the mean of eps(k) over the shells k >= D0 = 10 (shells [k, k+1), k = 10..63, each weighing the same). eps(k) = sum over days of |Yhat - Y|^2 / sum of |Y|^2 in the shell, pooled over the validation set. It is a new column (`eps_hf`, at the end). It differs from the existing `eps_k`, which weights the shells by target power.
+- **Best lambda, applied separately to the SRCNN sweep and the SRNO sweep** (lambda = 0: block A seed 0; lambda > 0: block B; all seed 0, residual, no noise):
+  1. **Candidates:** the lambda > 0 of the grid {1e-3, 1e-2, 1e-1, 1} whose validation MSE is <= 1.10 x the validation MSE of lambda = 0 of the same architecture. lambda = 0 is the reference, not a candidate.
+  2. **Choice:** among the candidates, the lowest eps_hf.
+  3. **Ties:** every candidate whose eps_hf is within 2% of that lowest value (eps_hf <= 1.02 x lowest) ties with it, and the smallest lambda among the tied ones is chosen. The 2% is measured against the lowest value, not between consecutive pairs.
+  4. **No candidate:** if no lambda > 0 meets the MSE bound, there is no choice. This is reported, and the decision goes back to the user.
+- **Families:**
+  - Same lambda in both sweeps: it holds for every architecture, via `make_block_c.py --lambda <v>`.
+  - Different lambdas: SRCNN's lambda for SRCNN, DSC/MS and PRUSR, and SRNO's for SRNO and SoFoNO, via `make_block_c.py --lambda-cnn <v> --lambda-op <v>`.
+  - `collect_results.py --split val` prints the resulting command.
+- **Regime B reuses the lambda(s) of regime A** (`make_block_n.py --lambda` or `--lambda-cnn/--lambda-op`). The lambda sweep on SRCNN with noise is only a sensitivity analysis and never chooses anything.
+- Implementation: `evaluation/selection.py` (`tests/test_selection.py`). The pilot (2 epochs, lambda in {0, 0.1}) was used only to check that the tables are produced; it chooses nothing.
+- Baselines on validation: identity and Wiener at sigma = 0 and 1e-2 were evaluated with `--split val` (`results/baseline_*/*_val*`). The test files are unchanged (md5) and gamma is the same (1e-12, 0.01). Their `config.json` had been rewritten by that call with the same gamma: only the last digits of `val_mse_by_gamma` changed (GPU). `evaluate_run.py --split val` now keeps an existing `config.json` and refuses if gamma differs.
+- Figure titles in test mode changed from "Test ..." / "test set" to a split-aware label ("..., test set"); the data in the figures is unchanged.

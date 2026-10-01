@@ -93,8 +93,22 @@ PASS  stage 3 = stage 1 + eps_2 f_2 + eps_3 f_3 on the original input (recursive
 PASS  evaluate_run.load_model rebuilds the stage-3 chain
 PASS  control trains exactly the epochs of stage 1 + stage 2, then stops
 12/12 checks passed
+=== tests/test_selection.py
+PASS  rule: lowest eps_hf among lambda > 0 with MSE <= 1.10 x lambda = 0 (lambda 1 excluded)  (chosen 0.1)
+PASS  rule: eps_hf within 2% of the lowest -> the smallest of the tied lambdas  (chosen 0.01)
+PASS  rule: 1.97% above the lowest ties (smaller lambda wins), 2.03% does not  (chosen 0.01 / 0.1)
+PASS  rule: no lambda > 0 within the MSE bound -> no choice (reported)
+PASS  rule: lambda = 0 is the reference, never a candidate (even with the lowest eps_hf)
+PASS  rule: a sweep without its lambda = 0 run is refused
+PASS  families: same lambda -> all architectures; different -> SRCNN's for the CNNs, SRNO's for the operators
+PASS  make_block_c.py --lambda-cnn/--lambda-op: 13 configs, CNNs at 0.1, operators at 0.01
+PASS  make_block_c.py refuses --lambda with a family lambda, and a single family lambda
+PASS  make_block_n.py with family lambdas + SRCNN sweep: 13 configs  (13)
+PASS  evaluate(split='val'): *_val files only, validation dates, eps_hf per sample and pooled
+PASS  validation dates: 731 days, 2020-01-01 .. 2021-12-31
+12/12 checks passed
 === tests/test_resume.py
 PASS  deterministic: resumed after every epoch (3 launches) is bit-identical  (3 vs 3 epochs)
-PASS  default: resumed after every epoch (3 launches) matches within relative 0.001 in val MSE  (max relative diff 4.70e-08; 3 vs 3 epochs)
+PASS  default: resumed after every epoch (3 launches) matches within relative 0.001 in val MSE  (max relative diff 4.50e-08; 3 vs 3 epochs)
 2/2 checks passed
 ALLDONE

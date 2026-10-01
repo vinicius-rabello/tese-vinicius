@@ -1,0 +1,62 @@
+{
+  "run_id": "P_srcnn_res_lam0.1_seed0",
+  "config_file": "pilot_configs/P_srcnn_lam0.1.yaml",
+  "config": {
+    "MODEL_NAME": "srcnn",
+    "RUN_NAME": "P_srcnn",
+    "DEVICE": "cuda",
+    "NUM_WORKERS": 4,
+    "BATCH_SIZE": 32,
+    "LEARNING_RATE": 0.0001,
+    "LAMBDA": 0.1,
+    "RESIDUAL": true,
+    "SEED": 0,
+    "IMAGE_SAVE_INTERVAL": 25,
+    "RESULTS_DIR": "/home/lcadame/Vinicius_Thesis/Vinicius/results_pilot",
+    "MIN_EPOCHS": 1,
+    "MAX_EPOCHS": 2
+  },
+  "seed": 0,
+  "model": "srcnn",
+  "residual": true,
+  "lambda": 0.1,
+  "noise_std": 0.0,
+  "loss": "mse + lambda * lpips (lpips: vgg, fields / lpips_scale, channel repeated x3, mean of u and v)",
+  "n_params": 63266,
+  "git": {
+    "commit": "6e87591814577c9489c5ceeb0dc88a264ed43e83",
+    "dirty": false
+  },
+  "libraries": {
+    "python": "3.11.14",
+    "torch": "2.8.0+cu128",
+    "numpy": "2.3.2",
+    "cuda": "12.8",
+    "cudnn": 91002,
+    "gpu": "Tesla V100-PCIE-16GB",
+    "lpips": "0.1.4",
+    "torchvision": "0.23.0",
+    "pyyaml": "6.0.3"
+  },
+  "deterministic": false,
+  "deterministic_algorithms": true,
+  "created": "2026-10-01T11:36:00.378983",
+  "stopping": {
+    "metric": "val_mse",
+    "relative_min_delta": 0.001,
+    "patience": 15,
+    "min_epochs": 1,
+    "max_epochs": 2
+  },
+  "scheduler": {
+    "type": "ReduceLROnPlateau",
+    "metric": "val_mse",
+    "patience": 5,
+    "factor": 0.5,
+    "threshold": 0.0001,
+    "threshold_mode": "rel"
+  },
+  "psnr_ssim_R": 5.326794147491455,
+  "hr_train_min": -2.4576449394226074,
+  "lpips_scale": 2.8691492080688477
+}

@@ -2,9 +2,11 @@
 order the .npy files store them (create_dataset.py concatenates the monthly
 netCDF files' time steps). The block bootstrap needs these dates.
 
-    python scripts/make_test_dates.py
+    python scripts/make_test_dates.py              # evaluation/test_dates.csv
+    python scripts/make_test_dates.py --split val  # evaluation/val_dates.csv (2020-2021)
 """
 
+import argparse
 import csv
 from pathlib import Path
 
@@ -14,11 +16,15 @@ from netCDF4 import Dataset, num2date
 ROOT = Path("/home/lcadame/Vinicius_Thesis/Data/hycom/100")
 TEST_YEARS = (2022, 2023, 2024)
 OUT = Path(__file__).resolve().parent.parent / "evaluation" / "test_dates.csv"
+SPLITS = {'test': (TEST_YEARS, OUT), 'val': ((2020, 2021), OUT.parent / "val_dates.csv")}
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--split', choices=SPLITS, default='test')
+    years, out = SPLITS[parser.parse_args().split]
     rows, index = [], 0
-    for year in TEST_YEARS:
+    for year in years:
         dates = []
         for month in range(1, 13):
             path = ROOT / str(year) / f"hycom_gom_{year}-{month:02d}.nc"
@@ -33,11 +39,11 @@ def main():
         for d in dates:
             rows.append({'index': index, 'date': d})
             index += 1
-    with open(OUT, 'w', newline='') as f:
+    with open(out, 'w', newline='') as f:
         writer = csv.DictWriter(f, fieldnames=['index', 'date'])
         writer.writeheader()
         writer.writerows(rows)
-    print(f"Wrote {len(rows)} dates to {OUT} ({rows[0]['date']} .. {rows[-1]['date']})")
+    print(f"Wrote {len(rows)} dates to {out} ({rows[0]['date']} .. {rows[-1]['date']})")
 
 
 if __name__ == "__main__":
