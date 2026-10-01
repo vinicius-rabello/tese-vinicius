@@ -6,6 +6,11 @@ Points that need a decision, decisions already taken (kept for the record), and 
 
 1. **Queue `fase1` at the maximum length.** At 150 epochs per run it takes 62.7 GPU-h; at 300 epochs, about 125 h. Today's 27 h slot covers roughly A seed 0 up to SRNO at 150 epochs. Relaunching the same command continues it. Recompute with `gpu_hours.py --measured results` after A seed 0.
 
+2. **Ceiling rule: two details to pin down before applying it** (DECISIONS.md, "Epoch ceiling").
+   - **The threshold "~2-3%":** which value, 2% or 3%, and is it the relative difference in validation MSE (seed 0)?
+   - **The new ceiling for an extended run:** e.g. 500, and the same for all extended runs?
+   - The decision is planned after block A seed 0.
+
 ## Resolved (user answers, 2026-10-01)
 
 | # | Question | Decision | Done in |

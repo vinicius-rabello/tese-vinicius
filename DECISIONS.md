@@ -208,3 +208,30 @@ Written and committed before the tag `campanha-v1` and before any campaign run, 
 
 - (a) The 2% tie is measured against the LOWEST eps_hf among the lambdas that pass the MSE bound, not between pairs of lambdas. Among the lambdas within 2% of that minimum, the SMALLEST lambda is chosen. The user's confirmation message first said "the largest"; asked about it, the user confirmed the smallest, as in the original rule and in `evaluation/selection.py`.
 - (b) lambda = 0 is only the reference (it sets the MSE bound and serves for comparison) and is never a candidate. If no lambda > 0 passes the MSE bound, nothing is chosen: the selection stops and the decision goes back to the user. In code: `select_lambda` returns None and says "no choice", and `collect_results.py --split val` then prints no `make_block_c.py` command.
+
+## Epoch ceiling (MAX_EPOCHS = 300) and runs that hit it (user decision, 2026-10-01, during phase 1)
+
+- **300 is a safety ceiling, not a target.**
+  - `max_epochs` only bounds the training loop; it does not enter the early-stopping rule or the scheduler.
+  - A run that stopped by early stopping would have stopped at the same epoch with a higher ceiling.
+- **Reopening a `completed_max_epochs` run** is possible: delete its `summary.json` and relaunch with a higher `MAX_EPOCHS`, and it resumes from `last.pt` with the optimizer, scheduler and early-stopping state intact.
+  - A new ceiling means new configs, so a new tag (`campanha-v1.1`). The run's `config.json` is not rewritten on resume and would still show `stopping.max_epochs = 300`, so any extension must be recorded here.
+  - The rule stays uniform: an extension applies to every run that hit the ceiling under the criterion below.
+- **No epoch data yet for PRUSR, SRNO and SoFoNO.** The central 150 epochs of `gpu_hours.py` comes from old CNN logs (139-202 epochs).
+- **A priori rule for runs that hit the ceiling** (decided before the remaining block A seed-0 runs finish):
+  - A capped run is extended only if its MSE differs by less than ~2-3% from the closest architecture.
+  - Otherwise it stays `completed_max_epochs` and is documented as such (`collect_results.py` already flags it: "stopped at max_epochs (may not have converged)").
+  - The comparison is on the validation set, seed 0, as every selection in this campaign ("Selection rules, a priori").
+- **Analysis of A_dscms_res_lam0_seed0** (hit 300 epochs; best epoch 298; measured from its `train_log.csv`):
+  - **Best validation MSE:**
+
+    | Epochs | Best val MSE | Gain |
+    |---|---|---|
+    | 200 → 250 | 7.5605e-4 → 7.3252e-4 | 3.1% |
+    | 250 → 300 | 7.3252e-4 → 7.1960e-4 | 1.8% |
+    | last 15 (285 → 300) | 7.2373e-4 → 7.1960e-4 | 0.57% |
+
+    That is about 0.035% per epoch at the end, or ~0.08 dB of PSNR over the last 50 epochs.
+  - **Early stopping was never close:** after epoch 200 the counter never exceeded 6/15, and it was 4/15 at epoch 300. Gains above 0.1% came every 3-7 epochs, the last one at epoch 296.
+  - **Why:** the criterion (no gain above 0.1% for 15 epochs) only fires once the drift of the best validation MSE falls below ~0.1%/15 ≈ 0.007% per epoch, about 5x slower than at the end. The scheduler had stopped cutting the learning rate (cuts at epochs 189 and 233, then 2.5e-5).
+  - **ESTIMATE, not a measurement:** if the gain rate keeps halving every ~50 epochs, DSC/MS would stop around 400-450 epochs, with ~1.5% more MSE gain (~0.07 dB). This is an extrapolation, not data.
