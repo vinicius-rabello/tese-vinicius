@@ -53,7 +53,7 @@ Inside the session:
 ```bash
 cd /home/lcadame/Vinicius_Thesis/Vinicius/_run
 source venv/bin/activate
-python scripts/run_queue.py queues/fase1.txt --max-hours 27 2>&1 | tee -a logs/fase1.log
+TQDM_DISABLE=1 python scripts/run_queue.py queues/fase1.txt --max-hours 27 2>&1 | tee -a logs/fase1.log
 ```
 
 - **Budget:** `--max-hours <h>` is passed to `train.py`, which stops cleanly before an epoch that would cross it.
@@ -61,6 +61,7 @@ python scripts/run_queue.py queues/fase1.txt --max-hours 27 2>&1 | tee -a logs/f
   - The test-set evaluation of the finished runs comes after the budget (~20 s per run in the pilot).
   - Leave ~15 min of margin. Omitting the option means 70.
   - To stop at a fixed clock time, compute the hours left: `python3 -c "from datetime import datetime as d; print(round((d.fromisoformat('2026-10-02T16:30') - d.now()).total_seconds() / 3600, 2))"`.
+- **`TQDM_DISABLE=1`** turns off the per-batch progress bars, which are useless in a file: they grew `fase1.log` to 23 MB in one day. The log then keeps one summary line per epoch (losses, validation MSE, lr, early-stopping counter) plus the run and queue messages. It needs no code change and no new tag. Leave it out when you are watching interactively and want the bar.
 - **Log:** `/home/lcadame/Vinicius_Thesis/Vinicius/_run/logs/fase1.log` (`tee -a` appends on every relaunch). Follow it with `tail -f` from any terminal.
 - **Next block or after a reboot:** open a new `screen -S campanha` and run the same three commands. Finished runs are skipped, an interrupted run resumes from its `last.pt` (saved atomically after every epoch, so at most the epoch in progress is lost), and finished runs that have not been evaluated get their test-set evaluation at the end.
 - **Stopping early:** `screen -r campanha`, then Ctrl-c once. The run in progress keeps the `last.pt` of its last finished epoch; relaunching resumes from there.
