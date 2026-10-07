@@ -26,9 +26,12 @@ def check(label, ok, detail=""):
     return ok
 
 
-def sweep(values):
-    """values: {lambda: (mse_val, eps_hf_val)}."""
-    return [{'run_id': f'r{lam:g}', 'lambda': lam, 'mse_val': m, 'eps_hf_val': e} for lam, (m, e) in values.items()]
+def sweep(values, eps_hf=None):
+    """values: {lambda: (mse_val, eps_w_10_40_val)}; eps_hf: {lambda: eps_hf_val}
+    (informative criterion, defaults to the same values)."""
+    eps_hf = eps_hf or {lam: e for lam, (_, e) in values.items()}
+    return [{'run_id': f'r{lam:g}', 'lambda': lam, 'mse_val': m, 'eps_w_val': e, 'eps_hf_val': eps_hf[lam]}
+            for lam, (m, e) in values.items()]
 
 
 def generate(script, *args):
@@ -45,11 +48,11 @@ def main():
     # Lowest eps_hf among lambda > 0 within the MSE bound; 1 exceeds the bound.
     _, chosen, _ = select_lambda('srcnn', sweep({0: (1.0, 0.50), 0.001: (1.01, 0.45), 0.01: (1.05, 0.40),
                                                  0.1: (1.09, 0.30), 1: (1.20, 0.10)}))
-    results.append(check("rule: lowest eps_hf among lambda > 0 with MSE <= 1.10 x lambda = 0 (lambda 1 excluded)",
+    results.append(check("rule: lowest eps_w_10_40 among lambda > 0 with MSE <= 1.10 x lambda = 0 (lambda 1 excluded)",
                          chosen == 0.1, f"(chosen {chosen})"))
     rows, chosen, _ = select_lambda('srcnn', sweep({0: (1.0, 0.50), 0.001: (1.0, 0.50), 0.01: (1.02, 0.304),
                                                     0.1: (1.05, 0.300), 1: (1.08, 0.299)}))
-    results.append(check("rule: eps_hf within 2% of the lowest -> the smallest of the tied lambdas",
+    results.append(check("rule: eps_w_10_40 within 2% of the lowest -> the smallest of the tied lambdas",
                          chosen == 0.01 and [r['tied_with_lowest'] for r in rows] == [False, False, True, True, True],
                          f"(chosen {chosen})"))
     _, inside, _ = select_lambda('srcnn', sweep({0: (1.0, 0.5), 0.01: (1.0, 0.3059), 0.1: (1.0, 0.300)}))
@@ -60,7 +63,7 @@ def main():
     results.append(check("rule: no lambda > 0 within the MSE bound -> no choice (reported)",
                          chosen is None and 'no choice' in why))
     rows, _, _ = select_lambda('srno', sweep({0: (1.0, 0.10), 0.01: (1.05, 0.30)}))
-    results.append(check("rule: lambda = 0 is the reference, never a candidate (even with the lowest eps_hf)",
+    results.append(check("rule: lambda = 0 is the reference, never a candidate (even with the lowest eps_w_10_40)",
                          rows[0]['candidate'] is False and rows[1]['chosen'] is True))
     try:
         select_lambda('srno', sweep({0.01: (1.0, 0.3)}))
@@ -68,6 +71,14 @@ def main():
     except ValueError:
         missing = True
     results.append(check("rule: a sweep without its lambda = 0 run is refused", missing))
+
+    rows, chosen, why = select_lambda('srcnn', sweep({0: (1.0, 0.20), 0.01: (1.02, 0.15), 0.1: (1.05, 0.10)},
+                                                     eps_hf={0: 0.30, 0.01: 0.20, 0.1: 0.25}))
+    results.append(check("amendment: the choice follows eps_w_10_40; eps_hf's choice is only reported (sensitivity)",
+                         chosen == 0.1 and [r['chosen_by_eps_hf (info)'] for r in rows] == [False, True, False]
+                         and 'eps_hf would choose 0.01' in why))
+    _, _, why_same = select_lambda('srcnn', sweep({0: (1.0, 0.2), 0.1: (1.0, 0.1)}))
+    results.append(check("amendment: agreement of the two criteria is reported", 'same lambda' in why_same))
 
     same, args_same = family_lambdas({'srcnn': 0.01, 'srno': 0.01})
     diff, args_diff = family_lambdas({'srcnn': 0.1, 'srno': 0.01})
@@ -110,7 +121,8 @@ def main():
                          files == ['best.pt', 'config.json', 'eval_summary_val.json', 'metrics_per_sample_val.csv',
                                    'spectra_val.npz']
                          and rows[1].split(',')[1] == '2020-01-01' and 'eps_hf' in rows[0].split(',')
-                         and summary['split'] == 'val' and 'eps_hf' in summary['pooled']))
+                         and summary['split'] == 'val' and 'eps_hf' in summary['pooled']
+                         and 'eps_w_10_40' in summary['pooled']))
     results.append(check("validation dates: 731 days, 2020-01-01 .. 2021-12-31",
                          len(evaluate_run.read_dates('val')) == len(val) == 731
                          and evaluate_run.read_dates('val')[-1] == '2021-12-31'))

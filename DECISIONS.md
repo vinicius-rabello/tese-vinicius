@@ -235,3 +235,26 @@ Written and committed before the tag `campanha-v1` and before any campaign run, 
   - **Early stopping was never close:** after epoch 200 the counter never exceeded 6/15, and it was 4/15 at epoch 300. Gains above 0.1% came every 3-7 epochs, the last one at epoch 296.
   - **Why:** the criterion (no gain above 0.1% for 15 epochs) only fires once the drift of the best validation MSE falls below ~0.1%/15 ≈ 0.007% per epoch, about 5x slower than at the end. The scheduler had stopped cutting the learning rate (cuts at epochs 189 and 233, then 2.5e-5).
   - **ESTIMATE, not a measurement:** if the gain rate keeps halving every ~50 epochs, DSC/MS would stop around 400-450 epochs, with ~1.5% more MSE gain (~0.07 dB). This is an extrapolation, not data.
+
+## Amendment to the lambda rule: selection metric eps_w_10_40 (user decision, 2026-10-07, before looking at block B)
+
+Recorded before any validation metric of a lambda > 0 run (block B) was computed or looked at. Only the training logs of block B existed. The evidence below comes from block A alone, seed 0, on the test set (analyses `analises/parcial_02`, `analises/parcial_03`).
+
+- **New criterion.** The criterion in step 2 of the lambda rule changes from eps_hf to **eps_w_10_40** = sum over 10 <= k < 40 of the error power / sum over 10 <= k < 40 of the target power. Both are pooled over the validation days, with shells [k, k+1); the pooled column is `eps_w_10_40`. Everything else stays: the 10% MSE bound, the 2% tie measured against the lowest value with the smallest lambda chosen, lambda = 0 never a candidate, no candidate meaning back to the user, the families, and regime B reusing the choice.
+- **eps_hf is kept as a sensitivity analysis only.** It is still computed, and the lambda it would choose is reported in `selecao_lambda_<arch>.csv` (columns marked "(info)") and in the report line ("[sensitivity, eps_hf: ...]"). It is never used to choose.
+- **Why eps_hf fails above k ~ 40** (evidence from block A only):
+
+  | Test, seed 0 | SRNO | PRUSR | DSC/MS | SRCNN | Wiener |
+  |---|---|---|---|---|---|
+  | MSE (m²/s²) | 5.82e-4 | 6.49e-4 | 7.81e-4 | 8.30e-4 | 3.24e-4 |
+  | eps_hf | 0.204 | 0.215 | 0.260 | 0.248 | 0.218 |
+  | eps_w_10_40 | 0.060 | 0.072 | 0.086 | 0.097 | ~1e-7 |
+
+  1. eps_hf is the only metric that inverts SRCNN and DSC/MS relative to MSE and to every power-weighted metric. It also ranks SRNO and PRUSR ahead of the Wiener filter, which has 1.8-2x less MSE.
+  2. The 128 x 128 patches are not periodic: the jump between opposite edges is ~12.5x the typical neighbour difference. The FFT turns the jump into a cross on the kx = 0 / ky = 0 axes. That cross holds 59% of the target energy at k = 40-63 in 3.7% of the bins, and 77% of the k >= 40 energy lies within 8 px of the edges. The Gaussian low-pass keeps a blurred copy of the jump in the LR input, so networks and Wiener reconstruct this edge signature.
+  3. With a Hann window (or excluding the axes), every network has eps(k) >= 0.94 above k ~ 40 and recovers essentially nothing above k ~ 35 in the interior; the real k_c (eps <= 1/2) is 25-29 instead of "63+". The R² of the k >= 40 component in the interior is ~0.2 for every network.
+  4. The 24 shells with k >= 40 weigh 44% of eps_hf (equal weight per shell). eps_w_10_40 excludes them, along with the float32 floor above k ~ 53, and gives the same ranking without window, with a Hann window and without the axes.
+- **Known limits of eps_w_10_40:**
+  - The cut at k = 40 is a choice, justified by item 3.
+  - Power weighting favours k ~ 10-25, where most of the energy is, so gains limited to k ~ 30-40 count little.
+- Implementation: `evaluate_run.pooled_spectral` (`eps_w_10_40`), `collect_results.py` (column at the end, used by `lambda_selection`), `evaluation/selection.py`, `tests/test_selection.py` (14/14). The training code is unchanged, so no new tag is needed: the selection runs in the main folder on `results/`.

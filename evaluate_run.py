@@ -186,6 +186,11 @@ def pooled_spectral(pred_power, target_power, error_power):
         # eps_hf: mean of the pooled eps(k) over the shells k >= D0 (each shell
         # weighs the same; eps_k_ge_D0 above weighs them by target power).
         'eps_hf': float(eps[high].mean()),
+        # eps_w_10_40: eps weighted by target power over 10 <= k < 40 (the lambda
+        # selection metric since the 2026-10-07 amendment; k >= 40 is dominated
+        # by the patch-edge artefact, DECISIONS.md).
+        'eps_w_10_40': float(e[high & (torch.arange(1, len(t) + 1) < 40)].sum()
+                             / t[high & (torch.arange(1, len(t) + 1) < 40)].sum()),
     }
     for name in ('k_c', 'k_c_01'):
         out[f'{name}_censurado'] = bool(sm.k_c_censored(out[name], len(eps)))

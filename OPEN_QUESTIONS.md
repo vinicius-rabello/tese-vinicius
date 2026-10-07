@@ -26,6 +26,7 @@ Points that need a decision, decisions already taken (kept for the record), and 
 | R9 | `--max-hours` | `run_queue.py --max-hours <h>` (e.g. 27), documented in RUNNING.md | 766219a |
 | R10 | Block B order in `fase1` | SRCNN's 4 runs before SRNO's 4 (already so) | 4db8079 |
 | R11 | Readings of the lambda rule | (a) 2% against the lowest eps_hf, the smallest lambda within it; (b) lambda = 0 never a candidate, no candidate -> back to the user | DECISIONS.md, commit before the tag |
+| R12 | Selection metric of the lambda rule | eps_w_10_40 (power-weighted eps over 10 <= k < 40) replaces eps_hf, which is kept as sensitivity analysis; decided before looking at block B, evidence from block A only | DECISIONS.md amendment 2026-10-07 |
 
 Also done on request: queues by priority (`queues/fase1-7.txt`, `scripts/run_queue.py`, 4db8079), `gpu_hours.py --measured` (bc0b5bc), worktree instructions (`RUNNING.md`). No tag was created and nothing was launched.
 

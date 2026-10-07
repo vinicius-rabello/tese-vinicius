@@ -52,8 +52,10 @@ RUN_COLS = ['run_id', 'status', 'arquitetura', 'perda', 'lambda', 'semente', 're
 # stricter threshold eps <= 0.1 (test set pooled), and censoring markers
 # (True = k_c reached the last shell, so the value is only a lower bound).
 K_C_EXTRA = ['k_c_01', 'k_c_censurado', 'k_c_01_censurado']
-# eps_hf: mean of the pooled eps(k) over the shells k >= D0 (the lambda selection metric).
-POOLED_EXTRA = K_C_EXTRA + ['eps_hf']
+# eps_hf: mean of the pooled eps(k) over the shells k >= D0 (informative since the
+# 2026-10-07 amendment); eps_w_10_40: eps weighted by target power over
+# 10 <= k < 40 (the lambda selection metric).
+POOLED_EXTRA = K_C_EXTRA + ['eps_hf', 'eps_w_10_40']
 RUN_COLS += POOLED_EXTRA
 # Split read and reported: 'test' (default, files without suffix) or 'val'
 # (--split val: *_val files written by evaluate_run.py --split val, and every
@@ -485,7 +487,7 @@ def lambda_selection(rows, out_dir):
     lines, chosen = ["", "## Lambda selection (a priori rule, validation set)", ""], {}
     for arch in ('srcnn', 'srno'):
         runs = [r for r in rows if r['arquitetura'] == arch and r['residual'] is True and not r['ruido']
-                and r['estagio'] == '' and r['semente'] == 0 and r['mse'] != '' and r['eps_hf'] != '']
+                and r['estagio'] == '' and r['semente'] == 0 and r['mse'] != '' and r['eps_w_10_40'] != '']
         lams = [r['lambda'] for r in runs]
         if 0 not in lams or len(lams) < 2:
             lines.append(f"- {arch}: not enough evaluated runs (lambda = 0 and at least one lambda > 0 on validation).")
@@ -493,7 +495,8 @@ def lambda_selection(rows, out_dir):
         if len(set(lams)) != len(lams):
             raise SystemExit(f"{arch}: more than one seed-0 run per lambda: {sorted(r['run_id'] for r in runs)}")
         table, chosen[arch], why = select_lambda(arch, [{'run_id': r['run_id'], 'lambda': r['lambda'],
-                                                          'mse_val': r['mse'], 'eps_hf_val': r['eps_hf']} for r in runs])
+                                                          'mse_val': r['mse'], 'eps_w_val': r['eps_w_10_40'],
+                                                          'eps_hf_val': r['eps_hf']} for r in runs])
         write_csv(os.path.join(out_dir, f'selecao_lambda_{arch}.csv'), table, TABLE_COLS)
         lines.append(f"- {arch}: {why} (`selecao_lambda_{arch}.csv`)")
     per_arch, args = family_lambdas(chosen)
