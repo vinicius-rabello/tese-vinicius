@@ -70,10 +70,35 @@ def ssim(pred, target, data_range: float, offset: float):
 
 # ----------------------------------------------------------------- spectral --
 _KE, _WKE = {}, {}
+# Spectral metrics only (never the training loss): window applied to every
+# field before the FFT. 'none' (default) leaves the field untouched, so every
+# metric is bit-identical to before; 'hann' removes the edge leakage of the
+# non-periodic 128 x 128 patches (DECISIONS.md, "Hann window").
+WINDOWS = ('none', 'hann')
+_HANN = {}
 
 
-def ke(pred, target):
+def apply_window(x, window: str = 'none'):
+    """'none': x itself. 'hann': per-sample, per-component mean removed, times
+    the 2D window w(i) w(j), w(n) = sin^2(pi n / (N - 1)) (torch.hann_window,
+    periodic=False), divided by sqrt(mean(w^2)) so energies keep their scale
+    (E(k) divided by mean(w^2)). Apply the same call to HR, LR and prediction."""
+    if window == 'none':
+        return x
+    if window != 'hann':
+        raise ValueError(f"window must be one of {WINDOWS}, got {window!r}")
+    n = x.shape[-1]
+    key = (n, x.device, x.dtype)
+    if key not in _HANN:
+        w1 = torch.hann_window(n, periodic=False, dtype=torch.float64, device=x.device)
+        w2 = w1[:, None] * w1[None, :]
+        _HANN[key] = (w2 / torch.sqrt((w2 ** 2).mean())).to(x.dtype)
+    return (x - x.mean(dim=(-2, -1), keepdim=True)) * _HANN[key]
+
+
+def ke(pred, target, window: str = 'none'):
     """Existing KineticEnergySpectrumLoss, one value per sample."""
+    pred, target = apply_window(pred, window), apply_window(target, window)
     n = pred.shape[-1]
     if n not in _KE:
         _KE[n] = KineticEnergySpectrumLoss(size=n)
@@ -81,8 +106,9 @@ def ke(pred, target):
     return torch.stack([fn(pred[i:i + 1], target[i:i + 1]) for i in range(pred.shape[0])])
 
 
-def wke(pred, target):
+def wke(pred, target, window: str = 'none'):
     """Existing WeightedKineticEnergySpectrumLoss, one value per sample."""
+    pred, target = apply_window(pred, window), apply_window(target, window)
     n = pred.shape[-1]
     if n not in _WKE:
         _WKE[n] = WeightedKineticEnergySpectrumLoss(size=n)
@@ -90,18 +116,24 @@ def wke(pred, target):
     return torch.stack([fn(pred[i:i + 1], target[i:i + 1]) for i in range(pred.shape[0])])
 
 
-def radial_spectrum(field):
+def radial_spectrum(field, window: str = 'none'):
     """Radial kinetic-energy spectrum E(k), k = 1..N/2-1, mean removed -- the
-    same spectrum KineticEnergySpectrumLoss compares. Shape (B, N/2-1)."""
+    same spectrum KineticEnergySpectrumLoss compares. Shape (B, N/2-1).
+    (With 'hann', compute_spectrum's own mean removal only touches k = 0,
+    which no shell contains.)"""
+    field = apply_window(field, window)
     n = field.shape[-1]
     if n not in _KE:
         _KE[n] = KineticEnergySpectrumLoss(size=n)
     return _KE[n].to(field.device).compute_spectrum(field)
 
 
-def band_errors(pred, target):
+def band_errors(pred, target, window: str = 'none'):
     """Per-band MSE by Parseval: sum_b band_errors[:, b] == mse(pred, target)
-    (up to float rounding). Shape (B, len(BAND_NAMES))."""
+    (up to float rounding). Shape (B, len(BAND_NAMES)). With 'hann' the bands
+    split the windowed error (the window is applied to pred and target, and
+    the means are removed, so k = 0 is empty and the sum is not the MSE)."""
+    pred, target = apply_window(pred, window), apply_window(target, window)
     n = pred.shape[-1]
     d = torch.fft.fft2(pred - target)
     power = (d.abs() ** 2).mean(1) / n ** 4  # mean over u, v -> (B, N, N)
@@ -110,7 +142,7 @@ def band_errors(pred, target):
                         for lo, hi in zip(BAND_EDGES[:-1], BAND_EDGES[1:])], dim=1)
 
 
-def spectral_correlation(pred, target):
+def spectral_correlation(pred, target, window: str = 'none'):
     """Phase coherence rho(k) = |sum Yhat conj(Y)| / sqrt(sum|Yhat|^2 sum|Y|^2)
     over each shell [k, k + 1), k = 1..N/2-1, summing u and v together
     (FRC-style). Shape (B, N/2-1).
@@ -118,6 +150,7 @@ def spectral_correlation(pred, target):
     It measures phase agreement only: a Gaussian blur multiplies each shell by
     an almost constant real factor, which cancels out, so a blurred field
     scores rho ~ 1. Use transfer_ratio / relative_spectral_error for amplitude."""
+    pred, target = apply_window(pred, window), apply_window(target, window)
     n = pred.shape[-1]
     p, t = torch.fft.fft2(pred), torch.fft.fft2(target)
     cross = (p * t.conj()).sum(1)
@@ -142,10 +175,11 @@ def effective_resolution(rho, threshold: float = 0.5):
     return first_below.float()  # index of first k below = number of k's above, i.e. last k above
 
 
-def shell_powers(pred, target):
+def shell_powers(pred, target, window: str = 'none'):
     """Per-sample sums over each shell [k, k + 1), k = 1..N/2-1, of |Yhat|^2,
     |Y|^2 and |Yhat - Y|^2 (u and v together). Summing these over samples
     gives the test-set T(k) and eps(k). Each has shape (B, N/2-1)."""
+    pred, target = apply_window(pred, window), apply_window(target, window)
     n = pred.shape[-1]
     p, t = torch.fft.fft2(pred), torch.fft.fft2(target)
     pp, tt, ee = (p.abs() ** 2).sum(1), (t.abs() ** 2).sum(1), ((p - t).abs() ** 2).sum(1)

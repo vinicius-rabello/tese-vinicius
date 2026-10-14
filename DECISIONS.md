@@ -258,3 +258,17 @@ Recorded before any validation metric of a lambda > 0 run (block B) was computed
   - The cut at k = 40 is a choice, justified by item 3.
   - Power weighting favours k ~ 10-25, where most of the energy is, so gains limited to k ~ 30-40 count little.
 - Implementation: `evaluate_run.pooled_spectral` (`eps_w_10_40`), `collect_results.py` (column at the end, used by `lambda_selection`), `evaluation/selection.py`, `tests/test_selection.py` (14/14). The training code is unchanged, so no new tag is needed: the selection runs in the main folder on `results/`.
+
+## Hann window for the spectral metrics (optional, evaluation only, 2026-10-14)
+
+- **What changed:** `evaluation/spectral_metrics.py` gained `window='none'|'hann'` in `ke`, `wke`, `radial_spectrum`, `band_errors`, `spectral_correlation` and `shell_powers` (`apply_window`). The default `'none'` is bit-identical to before (tests/test_window.py).
+- **What 'hann' does:** removes the per-sample, per-component mean, multiplies by w(i)w(j) with `torch.hann_window(N, periodic=False)` (w(n) = sin²(πn/(N−1)), the same as `np.hanning`), and divides by sqrt(mean(w²)), so energies keep their scale. The same window is applied to HR, LR and prediction.
+- **Never in training:** `metrics/kinetic_energy_spectrum.py`, `losses/losses.py` and `train.py` are unchanged, and no config key exposes the window. The campaign losses are MSE + lambda·LPIPS anyway; no run trains with a spectral loss.
+- **Where it is exposed:**
+  - `evaluate_run.py --window hann` writes new files (`metrics_per_sample_hann.csv`, `spectra_hann.npz`, `eval_summary_hann.json`) next to the old ones and never rewrites `config.json`; a baseline reuses its saved gamma.
+  - `collect_results.py --window hann` reads them and adds `_hann` to every output; it never writes `summary.json`.
+  - The lambda rule is defined on the unwindowed metrics, so `--split val --window hann` does not apply it.
+- **Caveats:**
+  - With 'hann', `band_errors` splits the windowed error, so the bands no longer add up to the MSE.
+  - The pointwise metrics (MSE, PSNR, SSIM, LPIPS) are the same code and do not depend on the window.
+- **Why:** the 128 x 128 patches are not periodic, and the jump between opposite edges leaks ~k^-2 energy into high k (analises/parcial_02, analises/dissertacao). The 50-day mean HR slope over k = 11..46 is −2.09 without the window and −2.66 with it.

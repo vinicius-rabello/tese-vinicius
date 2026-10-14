@@ -61,14 +61,18 @@ RUN_COLS += POOLED_EXTRA
 # (--split val: *_val files written by evaluate_run.py --split val, and every
 # output file of this script gets _val too). Set once in main().
 SPLIT = 'test'
+# Window of the FFT-based metrics read and reported: 'none' (default, the
+# original files) or 'hann' (--window hann: *_hann files written by
+# evaluate_run.py --window hann; every output of this script gets _hann too).
+WINDOW = 'none'
 
 
 def sfx():
-    return '' if SPLIT == 'test' else f'_{SPLIT}'
+    return ('' if SPLIT == 'test' else f'_{SPLIT}') + ('' if WINDOW == 'none' else f'_{WINDOW}')
 
 
 def split_name():
-    return 'test set' if SPLIT == 'test' else 'validation set'
+    return ('test set' if SPLIT == 'test' else 'validation set') + ('' if WINDOW == 'none' else f', {WINDOW} window')
 # Spectral-slope fitting range (k, cycles per domain), confirmed by the user
 # (proposal: scripts/propose_slope_range.py, target slope -2.11 over it).
 SLOPE_RANGE = (11, 46)
@@ -161,7 +165,9 @@ def evaluate_missing(run_dir, device, with_lpips):
     constants = {k: meta[k] for k in evaluate_run.CONSTANT_KEYS}
     make_loader = evaluate_run.test_loader if SPLIT == 'test' else evaluate_run.val_loader
     evaluate_run.evaluate(model, constants, run_dir, make_loader(16, evaluate_run.run_noise_std(meta)),
-                          device, with_lpips, split=SPLIT)
+                          device, with_lpips, split=SPLIT, window=WINDOW)
+    if WINDOW != 'none':
+        return  # windowed metrics stay in their own *_hann files; summary.json is not touched
     summary_path = os.path.join(run_dir, 'summary.json')
     summary = read_json(summary_path)
     summary[f'{SPLIT}_metrics'] = test_means(run_dir)
@@ -530,9 +536,12 @@ def main():
     parser.add_argument('--device', default=None)
     parser.add_argument('--split', choices=('test', 'val'), default='test',
                         help="val: validation metrics (model selection), all outputs with the suffix _val")
+    parser.add_argument('--window', choices=('none', 'hann'), default='none',
+                        help="hann: FFT-based metrics with a Hann window (*_hann files); outputs get the suffix _hann")
     args = parser.parse_args()
-    global SPLIT
+    global SPLIT, WINDOW
     SPLIT = args.split
+    WINDOW = args.window
 
     stamp = datetime.now().strftime('%Y%m%d-%H%M')
     out_dir = args.out or os.path.join('report', stamp + sfx())
@@ -580,7 +589,8 @@ def main():
     figure_lambda_sweep(rows, out_dir)
     figures = sorted(f for f in os.listdir(out_dir) if f.endswith('.png'))
 
-    selection = lambda_selection(rows, out_dir) if SPLIT == 'val' else ()
+    # The lambda rule is defined on the unwindowed metrics (DECISIONS.md), so it only runs with --window none.
+    selection = lambda_selection(rows, out_dir) if SPLIT == 'val' and WINDOW == 'none' else ()
     write_report(rows, baseline_rows, alerts(rows, args.results_dir), figures, out_dir, selection)
 
     zip_path = os.path.join(os.path.dirname(os.path.normpath(out_dir)) or '.',

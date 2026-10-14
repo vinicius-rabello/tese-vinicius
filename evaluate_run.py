@@ -100,12 +100,17 @@ def read_dates(split='test'):
         return [row['date'] for row in csv.DictReader(f)]
 
 
-def evaluate(predict, constants, out_dir, loader, device, with_lpips=True, dates=None, split='test'):
+def evaluate(predict, constants, out_dir, loader, device, with_lpips=True, dates=None, split='test',
+             window='none'):
     """Runs predict(lr) over the test loader and writes the per-sample metrics.
-    `dates` defaults to the full test set's; pass a slice only with a matching subset loader."""
+    `dates` defaults to the full test set's; pass a slice only with a matching subset loader.
+    window='hann' applies a Hann window before every FFT-based metric (pointwise
+    metrics unchanged) and writes to new files with the suffix _hann, never
+    over the unwindowed ones."""
     os.makedirs(out_dir, exist_ok=True)
     dates = read_dates(split) if dates is None else dates
-    suffix = SPLIT_SUFFIX[split]
+    suffix = SPLIT_SUFFIX[split] + ('' if window == 'none' else f'_{window}')
+    w = window
     lpips_models = {net: build_lpips(net, device) for net in ('vgg', 'alex')} if with_lpips else {}
     rows, pred_spectra, target_spectra, rhos = [], [], [], []
     powers = {'pred': [], 'target': [], 'error': []}
@@ -114,15 +119,15 @@ def evaluate(predict, constants, out_dir, loader, device, with_lpips=True, dates
         for lr, hr in loader:
             lr, hr = lr.to(device), hr.to(device)
             pred = predict(lr)
-            bands = sm.band_errors(pred, hr)
-            rho = sm.spectral_correlation(pred, hr)
-            pw = sm.shell_powers(pred, hr)
+            bands = sm.band_errors(pred, hr, window=w)
+            rho = sm.spectral_correlation(pred, hr, window=w)
+            pw = sm.shell_powers(pred, hr, window=w)
             batch = {
                 'mse': sm.mse(pred, hr),
                 'psnr': sm.psnr(pred, hr, constants['psnr_ssim_R']),
                 'ssim': sm.ssim(pred, hr, constants['psnr_ssim_R'], constants['hr_train_min']),
-                'ke': sm.ke(pred, hr),
-                'wke': sm.wke(pred, hr),
+                'ke': sm.ke(pred, hr, window=w),
+                'wke': sm.wke(pred, hr, window=w),
                 # k_c: largest k with eps(k') <= 1/2 for all k' <= k (this sample);
                 # k_c_fase: the phase-coherence version, blind to blur.
                 'k_c': sm.effective_resolution_eps(sm.relative_spectral_error(pw['error'], pw['target'])),
@@ -145,8 +150,8 @@ def evaluate(predict, constants, out_dir, loader, device, with_lpips=True, dates
                 rows.append({'index': index, 'date': dates[index],
                              **{k: float(v[i]) for k, v in batch.items()}})
                 index += 1
-            pred_spectra.append(sm.radial_spectrum(pred).cpu())
-            target_spectra.append(sm.radial_spectrum(hr).cpu())
+            pred_spectra.append(sm.radial_spectrum(pred, window=w).cpu())
+            target_spectra.append(sm.radial_spectrum(hr, window=w).cpu())
             rhos.append(rho.cpu())
             for name in powers:
                 powers[name].append(pw[name].cpu())
@@ -167,7 +172,7 @@ def evaluate(predict, constants, out_dir, loader, device, with_lpips=True, dates
     summary = {k: float(np.mean([r[k] for r in rows])) for k in metric_keys}
     pooled = pooled_spectral(*(torch.cat(powers[name]) for name in ('pred', 'target', 'error')))
     with open(os.path.join(out_dir, f'eval_summary{suffix}.json'), 'w') as f:
-        json.dump({'split': split, 'n_samples': index, 'means': summary, 'pooled': pooled, 'constants': constants}, f, indent=2)
+        json.dump({'split': split, 'window': window, 'n_samples': index, 'means': summary, 'pooled': pooled, 'constants': constants}, f, indent=2)
     return summary
 
 
@@ -213,6 +218,8 @@ def main():
     parser.add_argument('--no-lpips', action='store_true')
     parser.add_argument('--split', choices=SPLIT_SUFFIX, default='test',
                         help="test (default) or val: validation metrics, written to *_val files")
+    parser.add_argument('--window', choices=sm.WINDOWS, default='none',
+                        help="hann: FFT-based metrics with a Hann window, written to *_hann files")
     parser.add_argument('--noise-std', type=float, default=0.0,
                         help="observation noise (m/s) for the baselines; runs use their own config.json value")
     args = parser.parse_args()
@@ -231,7 +238,7 @@ def main():
             continue
         constants = {k: meta[k] for k in CONSTANT_KEYS}
         summary = evaluate(model, constants, run_dir, get_loader(run_noise_std(meta)), args.device, not args.no_lpips,
-                           split=args.split)
+                           split=args.split, window=args.window)
         print(f"{run_dir} [{args.split}]: mse {summary['mse']:.4g} psnr {summary['psnr']:.3f} ssim {summary['ssim']:.4f}")
 
     if args.baseline:
@@ -240,16 +247,23 @@ def main():
         for name in args.baseline:
             out_dir = os.path.join(args.results_dir, f'baseline_{name}{noise_tag}')
             meta = {'baseline': name, 'noise_std': args.noise_std, **constants}
+            config_path = os.path.join(out_dir, 'config.json')
             if name == 'identity':
                 predict = baselines.identity
+            elif args.window != 'none' and os.path.exists(config_path):
+                # Windowed re-evaluation of an existing baseline: reuse its gamma,
+                # never re-select it nor rewrite its config.json.
+                with open(config_path) as f:
+                    gamma = json.load(f)['gamma']
+                meta['gamma'] = gamma
+                predict = lambda lr, g=gamma: baselines.wiener(lr, g)  # noqa: E731
             else:
                 gamma, curve = baselines.choose_gamma(val_loader(args.batch_size, args.noise_std), device=args.device)
                 meta.update({'gamma': gamma, 'gamma_selection': 'min validation MSE',
                              'val_mse_by_gamma': curve})
                 predict = lambda lr, g=gamma: baselines.wiener(lr, g)  # noqa: E731
             os.makedirs(out_dir, exist_ok=True)
-            config_path = os.path.join(out_dir, 'config.json')
-            if args.split == 'val' and os.path.exists(config_path):
+            if (args.split == 'val' or args.window != 'none') and os.path.exists(config_path):
                 # Keep the config of the test evaluation; gamma must be the same.
                 with open(config_path) as f:
                     kept = json.load(f)
@@ -259,7 +273,7 @@ def main():
                 with open(config_path, 'w') as f:
                     json.dump(meta, f, indent=2)
             summary = evaluate(predict, constants, out_dir, get_loader(args.noise_std), args.device, not args.no_lpips,
-                               split=args.split)
+                               split=args.split, window=args.window)
             print(f"baseline {name}: mse {summary['mse']:.4g} psnr {summary['psnr']:.3f} ssim {summary['ssim']:.4f}"
                   + (f" (gamma {meta['gamma']:.3g})" if name == 'wiener' else ""))
 
