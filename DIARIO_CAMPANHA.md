@@ -152,3 +152,17 @@ Comando: `collect_results.py --split val --runs "A_*_seed0" "B_*"`. Relatório e
 - **A fase2 lista 3 configs:** C_dscms, C_prusr e C_sofono, com λ = 1 e semente 0. As de SRCNN e SRNO na semente 0 são as runs do bloco B com λ = 1.
 
 **Próximo:** lançar a fase2 no `screen` (usuário).
+
+## 7. Fase2 em andamento; relatórios de teste da fase1; pacote para revisão (15/10)
+
+- **Fase2 lançada às ~10h50,** com prazo até 16:45.
+  - **C_dscms (λ = 1):** concluída por early stopping, 194 épocas, 2,49 h. Melhor MSE de validação 3,82e-4, contra 7,20e-4 da A_dscms com λ = 0. A avaliação de teste sai no fim da fila.
+  - **C_prusr:** em andamento, época 38 às 14:45, a 128 s por época.
+  - **C_sofono:** pendente.
+- **Relatórios de teste da fase1** (13 runs): `report/20261015-1445_fase1/` sem janela e `report/20261015-1445_fase1_hann/` com janela Hann.
+- **Alertas do relatório:**
+  - A_dscms parou no teto, já tratada pela regra.
+  - "LPIPS domina a perda" na B_srcnn λ = 1 e na B_srno λ = 1: λ·LPIPS/MSE de 87 e 55 ao fim do treino.
+
+  Mesmo com o termo LPIPS ~50–90× maior que o MSE na perda, essas são as runs de menor MSE da varredura (SRNO) ou perto dele (SRCNN). Isso é um ponto para discutir na dissertação.
+- **Pacote para revisão externa:** `analises/pacote_claude/pacote_20261015.zip` (16 MB, sem `.pt`/`.npz`, com `LEIA_ME.md`). Contém diário, decisões, relatórios de teste e validação, tabelas e as análises parcial_02, parcial_03, hann e dissertação.
