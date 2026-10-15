@@ -113,3 +113,42 @@ Comando: `collect_results.py --split val --runs "A_*_seed0" "B_*"`. Relatório e
   A SRNO com λ = 1 supera o Wiener também no interior e recupera energia real em k ≥ 40. A verificar ainda: mapas de erro e espectros de alguns dias, antes de entrar no texto.
 
 **Próximo:** gerar os configs do bloco C com λ = 1 e lançar a fase2 (C semente 0: DSC/MS, PRUSR, SoFoNO).
+
+## 6. Métricas espectrais com Hann em todas as runs da fase1; bloco C gerado (15/10)
+
+- **Reavaliação com Hann:** as 13 runs da fase1, os baselines e os 6 operadores restantes, rodados na GPU antes da fase2. Arquivos `*_hann` novos; nada foi sobrescrito.
+- **Tabelas:** `tables/metricas_espectrais_hann.csv` e `analises/hann/comparacao.md`.
+
+**k_c real (ε ≤ 1/2, com Hann; sem janela todas davam "63+"):**
+
+| Run | k_c Hann | k_c_01 | eps_w_10_40 Hann | E_pred/E_HR, k=11–46 | Inclinação k=11–46 (HR: −2,66) |
+|---|---|---|---|---|---|
+| A_srcnn | 25 | 20 | 0,142 | 0,012 | −11,6 |
+| A_dscms | 26 | 22 | 0,123 | 0,005 | −13,5 |
+| A_prusr | 27 | 22 | 0,103 | 0,10 | −7,6 |
+| A_srno | 29 | 24 | 0,083 | 0,15 | −6,8 |
+| A_sofono | 30 | 25 | 0,069 | 0,17 | −6,6 |
+| B_srcnn λ=0,1 | 30 | 25 | 0,088 | 0,69 | −3,5 |
+| B_srcnn λ=1 | 30 | 26 | 0,082 | 0,75 | −3,3 |
+| B_srno λ=0,01 | 34 | 28 | 0,044 | 0,66 | −3,6 |
+| B_srno λ=0,1 | 43 | 36 | 0,0063 | 0,91 | −3,1 |
+| **B_srno λ=1** | **51** | **47** | **0,00045** | **1,09** | **−2,42** |
+| Wiener | 49 | 47 | ~0 | 1,00 | −2,64 |
+| identidade | 15 | 8 | 0,504 | 0,0002 | −14,3 |
+
+**Leitura:**
+- **Sem LPIPS (bloco A):** todas as arquiteturas perdem quase toda a energia acima de k ≈ 30. O k_c real fica entre 25 e 30, e a ordem é SoFoNO ≥ SRNO > PRUSR > DSC/MS > SRCNN.
+- **Com LPIPS:** a energia em k = 11–46 volta.
+  - A **SRNO λ = 1** chega a k_c = 51, igual ao Wiener (49), com inclinação −2,42.
+  - Ela tem leve **excesso** de energia em k = 11–46 (razão 1,09). Vale olhar se é energia em fase errada.
+- **Robustez dos rankings à janela, entre as 13 runs:**
+  - eps_w_10_40 (Spearman 0,99), ε ponderado (0,99), k_c_01 (0,98), T (0,96), KE/WKE (0,93) e eps_hf (0,93) quase não mudam;
+  - k_c_fase muda bastante (0,34);
+  - k_c sem janela era inútil, todos empatados em 63+.
+- **Métricas pontuais (MSE, PSNR, SSIM, LPIPS):** inalteradas.
+
+**Bloco C gerado:**
+- **Comando:** `make_block_c.py --lambda 1 --sweep-arch srno srcnn`, 13 configs, idênticos em `_run/` e na pasta principal (commit 1ea64d9).
+- **A fase2 lista 3 configs:** C_dscms, C_prusr e C_sofono, com λ = 1 e semente 0. As de SRCNN e SRNO na semente 0 são as runs do bloco B com λ = 1.
+
+**Próximo:** lançar a fase2 no `screen` (usuário).
