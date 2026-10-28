@@ -76,11 +76,11 @@ class SuperResDataset(Dataset):
         return lr_img, hr_img
 
 if __name__ == "__main__":
-    dataset = SuperResDataset(hr_files=['data/100/window_2003.npy', 'data/100/window_2004.npy'], downsample_factor=4, freq_threshold=10)
+    dataset = SuperResDataset(hr_files=['data/100/window_2003.npy', 'data/100/window_2004.npy'], downsample_factor=1, freq_threshold=10)
     print(f"Dataset length: {len(dataset)}")
 
     # Get the first item (index 0)
-    lr_sample, hr_sample = dataset[19]
+    lr_sample, hr_sample = dataset[0]
 
     # Print the shapes
     print(f"Shape of the returned Low-Resolution (LR) image: {lr_sample.shape}")
@@ -89,7 +89,9 @@ if __name__ == "__main__":
     # Optional: Check data types
     print(f"Dtype of LR image: {lr_sample.dtype}")
     print(f"Dtype of HR image: {hr_sample.dtype}")
-    plt.imsave('lr_u.png', lr_sample.numpy()[0])
+    plt.imsave('lr_u_gaussian.png', lr_sample.numpy()[0])
     plt.imsave('hr_u.png', hr_sample.numpy()[0])
-    plt.imsave('lr_v.png', lr_sample.numpy()[1])
+    plt.imsave('lr_v_gaussian.png', lr_sample.numpy()[1])
     plt.imsave('hr_v.png', hr_sample.numpy()[1])
+    np.save('lr_sample_gaussian.npy', lr_sample.numpy())
+    np.save('hr_sample.npy', hr_sample.numpy())

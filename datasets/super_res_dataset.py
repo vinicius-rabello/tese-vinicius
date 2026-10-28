@@ -40,7 +40,7 @@ class SuperResDataset(Dataset):
         return lr_tensor, hr_tensor
 
 if __name__ == "__main__":
-    dataset = SuperResDataset(hr_files=['data/100/window_2003.npy', 'data/100/window_2004.npy'], downsample_factor=4)
+    dataset = SuperResDataset(hr_files=['data/100/window_2003.npy', 'data/100/window_2004.npy'], downsample_factor=8)
     print(f"Dataset length: {len(dataset)}")
 
     # Get the first item (index 0)

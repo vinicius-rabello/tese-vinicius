@@ -11,6 +11,7 @@ from metrics.image_metrics import mseLoss, ssimLoss, psnrLoss, lpipsLoss, fsimLo
 from metrics.physical_metrics import LossTKE
 import argparse
 import torch.nn.functional as F
+from tqdm import tqdm
 
 
 def interpolate_baseline(lr, mode, downsample_factor=4):
@@ -42,7 +43,7 @@ def evaluate_model(model, test_loader, device):
     }
     
     with torch.no_grad():
-        for idx, (lr, hr) in enumerate(test_loader):
+        for idx, (lr, hr) in tqdm(enumerate(test_loader), total=len(test_loader)):
             lr, hr = lr.to(device), hr.to(device)
             output = model(lr)
             
@@ -80,7 +81,7 @@ def evaluate_baseline(mode, test_loader, device, downsample_factor=4):
     }
 
     with torch.no_grad():
-        for idx, (lr, hr) in enumerate(test_loader):
+        for idx, (lr, hr) in tqdm(enumerate(test_loader), desc=f"Evaluating {mode} baseline", total=len(test_loader)):
             lr, hr = lr.to(device), hr.to(device)
             output = interpolate_baseline(lr, mode=mode, downsample_factor=downsample_factor)
 
@@ -106,7 +107,7 @@ def evaluate_baseline(mode, test_loader, device, downsample_factor=4):
 
 def main(model_name):
     # Setup test dataset
-    test_dataset = SRTinyDataset(
+    test_dataset = SuperResDataset(
         hr_files=['data/100/window_2023.npy'],
         downsample_factor=4
     )
@@ -131,15 +132,15 @@ def main(model_name):
         if model_name == 'DSCMS':
             from models.DSCMS.model import DSCMS
             model = DSCMS(2, 2)
-            checkpoint_path = './models/DSCMS/output/weights/DSCMS_best.pth'
+            checkpoint_path = './models/DSCMS/output/weights/DSCMS_full_best.pth'
         elif model_name == 'PRUSR':
             from models.PRUSR.model import PRUSR
             model = PRUSR(2, 2)
-            checkpoint_path = './models/PRUSR/output/weights/PRUSR_best.pth'
+            checkpoint_path = './models/PRUSR/output/weights/PRUSR_full_best.pth'
         elif model_name == 'SRCNN':
             from models.SRCNN.model import SRCNN
             model = SRCNN(2, 2)
-            checkpoint_path = './models/SRCNN/output/weights/SRCNN_best.pth'
+            checkpoint_path = './models/SRCNN/output/weights/SRCNN_full_best.pth'
         # Add more models here as needed
         else:
             raise ValueError(f"Unknown model: {model_name}")

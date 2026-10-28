@@ -1,0 +1,23 @@
+# config_phase3b.yaml
+experiment:
+  name: "PRUSR_Phase3b_Weighted"
+  root_folder: "./experiments/"
+
+model:
+  architecture: "PRUSR"  # You can use this to dynamically load different models
+  in_channels: 2
+  out_channels: 2
+
+training:
+  batch_size: 32
+  learning_rate: 0.0001
+  num_epochs: 200
+  weight_decay: 0.0001
+  patience: 5
+
+# This is the magic part for your methodology
+loss_weights:
+  mse: 0.70
+  epi: 0.15
+  spectral_unweighted: 0.00
+  spectral_weighted: 0.15

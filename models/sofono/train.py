@@ -8,11 +8,16 @@ from torch.utils.data import DataLoader, random_split
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 
-from models.srno.model import EDSREncoder, SRONET
-from models.srno import config
+from models.sofono.model import EDSREncoder, SoFoNO
+import models.sofono.config as config
 
 sys.path.append('./')
 from datasets.sr_tiny_dataset_srno import SRTinyDataset
+
+
+# =============================================================================
+# HELPERS
+# =============================================================================
 
 def normalise(t, mean, std, device):
     m = torch.tensor(mean, device=device).view(1, -1, 1, 1)
@@ -36,6 +41,15 @@ class Averager:
 def calc_psnr(pred, gt, max_val=1.0):
     mse = torch.mean((pred - gt) ** 2).item()
     return 10 * math.log10(max_val ** 2 / (mse + 1e-8))
+
+
+def get_gate_value(model):
+    """
+    Return the current sigmoid-gated value of the learnable scalar s.
+    Works whether or not the model is wrapped in DataParallel.
+    """
+    raw_s = model.module.s if isinstance(model, nn.DataParallel) else model.s
+    return torch.sigmoid(raw_s).item()
 
 
 # =============================================================================
@@ -69,9 +83,9 @@ def get_data_loaders():
     train_ds, val_ds = random_split(dataset, [train_size, val_size])
 
     train_loader = DataLoader(train_ds, batch_size=config.BATCH_SIZE,
-                              shuffle=True,  num_workers=4, pin_memory=True)
+                              shuffle=True,  num_workers=config.NUM_WORKERS, pin_memory=True)
     val_loader   = DataLoader(val_ds,   batch_size=config.BATCH_SIZE,
-                              shuffle=False, num_workers=4, pin_memory=True)
+                              shuffle=False, num_workers=config.NUM_WORKERS, pin_memory=True)
 
     print(f'Dataset: {len(dataset)} total  |  train {train_size}  |  val {val_size}')
     return train_loader, val_loader
@@ -84,7 +98,7 @@ def get_data_loaders():
 def train_one_epoch(model, train_loader, optimizer, criterion, device, epoch):
     model.train()
     epoch_loss = 0.0
-    img_dir    = os.path.join('./models/srno', 'output', 'images')
+    img_dir    = os.path.join(config.ROOT_FOLDER, 'output', 'images')
     loop       = tqdm(train_loader, leave=True, desc=f'Epoch {epoch}')
 
     for batch_idx, batch in enumerate(loop):
@@ -153,7 +167,7 @@ def save_checkpoint(model, optimizer, scheduler, epoch, train_loss, val_loss, pa
 
 
 def load_checkpoint(model, optimizer, scheduler, path):
-    ckpt = torch.load(path)
+    ckpt = torch.load(path, weights_only=True)
     model.load_state_dict(ckpt['model_state_dict'])
     optimizer.load_state_dict(ckpt['optimizer_state_dict'])
     scheduler.load_state_dict(ckpt['scheduler_state_dict'])
@@ -169,7 +183,7 @@ def main():
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(42)
 
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    device = torch.device(config.DEVICE)
 
     # output dirs
     for sub in ['output/logs', 'output/weights', 'output/images']:
@@ -181,7 +195,9 @@ def main():
     # model
     encoder = EDSREncoder(n_resblocks=config.N_RESBLOCKS, n_feats=config.N_FEATS,
                           res_scale=config.RES_SCALE, n_colors=2)
-    model   = SRONET(encoder=encoder, width=config.WIDTH, blocks=config.BLOCKS, n_out=2)
+    model   = SoFoNO(encoder=encoder, width=config.WIDTH, T=config.T,
+                     local_branch=config.LOCAL_BRANCH, init_s=config.INIT_S,
+                     ranges=config.RANGES, n_out=2)
     if torch.cuda.device_count() > 1:
         model = nn.DataParallel(model)
     model = model.to(device)
@@ -195,10 +211,10 @@ def main():
     scheduler = WarmupCosineScheduler(optimizer,
                                       warmup_epochs=config.WARMUP_EPOCHS,
                                       total_epochs=config.NUM_EPOCHS)
-    criterion  = nn.L1Loss()
-    log_path   = os.path.join(config.ROOT_FOLDER, 'output', 'logs', 'SRONET_loss.txt')
-    w_dir      = os.path.join(config.ROOT_FOLDER, 'output', 'weights')
-    best_val   = float('inf')
+    criterion = nn.L1Loss()
+    log_path  = os.path.join(config.ROOT_FOLDER, 'output', 'logs', 'SoFoNO_loss.txt')
+    w_dir     = os.path.join(config.ROOT_FOLDER, 'output', 'weights')
+    best_val  = float('inf')
 
     for epoch in range(1, config.NUM_EPOCHS + 1):
         train_loss = train_one_epoch(
@@ -209,30 +225,31 @@ def main():
 
         scheduler.step()
         current_lr = optimizer.param_groups[0]['lr']
+        gate       = get_gate_value(model)   # sigmoid(s) — SoFoNO-specific
 
         print(f'Epoch [{epoch}/{config.NUM_EPOCHS}]  '
               f'train={train_loss:.6f}  val={val_loss:.6f}  '
-              f'psnr={val_psnr:.2f}dB  lr={current_lr:.2e}')
+              f'psnr={val_psnr:.2f}dB  lr={current_lr:.2e}  gate={gate:.4f}')
 
         with open(log_path, 'a') as f:
             f.write(f'Epoch [{epoch}/{config.NUM_EPOCHS}]  '
                     f'train={train_loss:.4f}  val={val_loss:.4f}  '
-                    f'psnr={val_psnr:.2f}dB  lr={current_lr:.2e}\n')
+                    f'psnr={val_psnr:.2f}dB  lr={current_lr:.2e}  gate={gate:.4f}\n')
 
         # always save latest
         save_checkpoint(model, optimizer, scheduler, epoch, train_loss, val_loss,
-                        os.path.join(w_dir, 'SRONET_last.pth'))
+                        os.path.join(w_dir, 'SoFoNO_last.pth'))
 
         # save best
         if val_loss < best_val:
             best_val = val_loss
             save_checkpoint(model, optimizer, scheduler, epoch, train_loss, val_loss,
-                            os.path.join(w_dir, 'SRONET_best.pth'))
+                            os.path.join(w_dir, 'SoFoNO_best.pth'))
 
         # periodic snapshot
         if epoch % config.EPOCH_SAVE == 0:
             save_checkpoint(model, optimizer, scheduler, epoch, train_loss, val_loss,
-                            os.path.join(w_dir, f'SRONET_epoch{epoch}.pth'))
+                            os.path.join(w_dir, f'SoFoNO_epoch{epoch}.pth'))
 
 
 if __name__ == '__main__':
