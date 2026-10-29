@@ -1,0 +1,15 @@
+{
+  "run_id": "C_prusr_res_lam1_seed0",
+  "status": "completed_early_stop",
+  "epochs_completed": 226,
+  "best_epoch": 211,
+  "best_val_mse": 0.00034981061574345567,
+  "monitor_metric": "val_mse",
+  "final_lr": 3.90625e-07,
+  "train_hours": 8.05699129056251,
+  "n_params": 870402,
+  "residual": true,
+  "lambda": 1.0,
+  "noise_std": 0.0,
+  "finished": "2026-10-16T14:48:13.151707"
+}

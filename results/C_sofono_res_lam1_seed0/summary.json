@@ -1,0 +1,15 @@
+{
+  "run_id": "C_sofono_res_lam1_seed0",
+  "status": "interrupted_max_hours",
+  "epochs_completed": 109,
+  "best_epoch": 107,
+  "best_val_mse": 0.00010017604643473256,
+  "monitor_metric": "val_mse",
+  "final_lr": 1.25e-06,
+  "train_hours": 8.36604310870694,
+  "n_params": 2045699,
+  "residual": true,
+  "lambda": 1.0,
+  "noise_std": 0.0,
+  "finished": "2026-10-19T16:43:28.498712"
+}

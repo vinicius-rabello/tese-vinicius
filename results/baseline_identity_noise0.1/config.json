@@ -1,0 +1,7 @@
+{
+  "baseline": "identity",
+  "noise_std": 0.1,
+  "psnr_ssim_R": 5.326794147491455,
+  "hr_train_min": -2.4576449394226074,
+  "lpips_scale": 2.8691492080688477
+}

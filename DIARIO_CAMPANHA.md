@@ -185,3 +185,8 @@ Comando: `collect_results.py --split val --runs "A_*_seed0" "B_*"`. Relatório e
   | fase7 (com aval do orientador) | 21/12 | 23/12 |
 
   Supõe que cada fila é lançada logo após a anterior.
+
+## 9. Versionamento (29/10)
+
+- **Branch:** todo o trabalho fica na branch `ocean-machine`, enviada ao GitHub (até 49ae938).
+- **`results/`:** passa a ser versionado só com os arquivos de texto: config, summaries, logs e métricas por dia (~22 MB). Os `spectra*.npz` (90 MB, regeneráveis), os checkpoints e as imagens ficam fora (`DECISIONS.md`).
