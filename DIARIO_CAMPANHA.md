@@ -166,3 +166,22 @@ Comando: `collect_results.py --split val --runs "A_*_seed0" "B_*"`. Relatório e
 
   Mesmo com o termo LPIPS ~50–90× maior que o MSE na perda, essas são as runs de menor MSE da varredura (SRNO) ou perto dele (SRCNN). Isso é um ponto para discutir na dissertação.
 - **Pacote para revisão externa:** `analises/pacote_claude/pacote_20261015.zip` (16 MB, sem `.pt`/`.npz`, com `LEIA_ME.md`). Contém diário, decisões, relatórios de teste e validação, tabelas e as análises parcial_02, parcial_03, hann e dissertação.
+
+## 8. Estado em 29/10
+
+- **Fase2, bloco C semente 0 com λ = 1:**
+  - **C_dscms:** concluída, 194 épocas, melhor MSE de validação 3,82e-4.
+  - **C_prusr:** concluída, 226 épocas, 3,50e-4.
+  - **C_sofono:** em andamento, época 110; melhor MSE de validação 1,00e-4 na época 107. O lr já foi cortado 5 vezes (1,25e-6) e o contador do early stopping está em 3/15, então deve parar em breve.
+- **ETA** (janelas de dias úteis das 9h05 às 16h45, sem os feriados de 2/11, 20/11, 25/12 e 1/1; script `analises/eta/eta_restante.py`):
+
+  | Fila | Central | Pior caso |
+  |---|---|---|
+  | fase2 | 29/10 | 30/10 |
+  | fase3 | 30/10 | 03/11 |
+  | fase4 | 10/11 | 12/11 |
+  | fase5 | 24/11 | 25/11 |
+  | fase6 | 09/12 | 10/12 |
+  | fase7 (com aval do orientador) | 21/12 | 23/12 |
+
+  Supõe que cada fila é lançada logo após a anterior.
