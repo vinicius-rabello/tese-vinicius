@@ -1,0 +1,22 @@
+/home/lcadame/Vinicius_Thesis/Vinicius/venv/lib/python3.11/site-packages/torchvision/models/_utils.py:208: UserWarning: The parameter 'pretrained' is deprecated since 0.13 and may be removed in the future, please use 'weights' instead.
+  warnings.warn(
+/home/lcadame/Vinicius_Thesis/Vinicius/venv/lib/python3.11/site-packages/torchvision/models/_utils.py:223: UserWarning: Arguments other than a weight enum or `None` for 'weights' are deprecated since 0.13 and may be removed in the future. The current behavior is equivalent to passing `weights=VGG16_Weights.IMAGENET1K_V1`. You can also use `weights=VGG16_Weights.DEFAULT` to get the most up-to-date weights.
+  warnings.warn(msg)
+/home/lcadame/Vinicius_Thesis/Vinicius/venv/lib/python3.11/site-packages/torchvision/models/_utils.py:223: UserWarning: Arguments other than a weight enum or `None` for 'weights' are deprecated since 0.13 and may be removed in the future. The current behavior is equivalent to passing `weights=AlexNet_Weights.IMAGENET1K_V1`. You can also use `weights=AlexNet_Weights.DEFAULT` to get the most up-to-date weights.
+  warnings.warn(msg)
+Evaluating A_dscms_res_lam0_seed0 on the test set (cpu) ...
+Loading datasets...
+./hycom_numpy/hycom_2022.npy: (365, 128, 128, 2)
+./hycom_numpy/hycom_2023.npy: (365, 128, 128, 2)
+./hycom_numpy/hycom_2024.npy: (244, 128, 128, 2)
+Loaded 974 samples.
+Dataset shape: (974, 128, 128, 2)
+Evaluating A_srcnn_res_lam0_seed0 on the test set (cpu) ...
+Loading datasets...
+./hycom_numpy/hycom_2022.npy: (365, 128, 128, 2)
+./hycom_numpy/hycom_2023.npy: (365, 128, 128, 2)
+./hycom_numpy/hycom_2024.npy: (244, 128, 128, 2)
+Loaded 974 samples.
+Dataset shape: (974, 128, 128, 2)
+Report: /home/lcadame/Vinicius_Thesis/analises/parcial_01/report (0.94 MB)
+Zip:    /home/lcadame/Vinicius_Thesis/analises/parcial_01/report_report.zip (0.74 MB)

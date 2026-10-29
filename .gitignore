@@ -54,3 +54,11 @@ archive/**/output/images/
 
 # Light result backups (scripts/backup_results.sh)
 /backups/
+
+# Analyses and reports: keep text (md, csv, json, py, logs), not figures or archives
+analises/**/*.pdf
+analises/**/*.zip
+analises/**/*.npy
+analises/**/*.npz
+report/**/*.pdf
+report/*.zip

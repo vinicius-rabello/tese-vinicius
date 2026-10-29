@@ -1,0 +1,21 @@
+Loading datasets...
+./hycom_numpy/hycom_2022.npy: (365, 128, 128, 2)
+./hycom_numpy/hycom_2023.npy: (365, 128, 128, 2)
+./hycom_numpy/hycom_2024.npy: (244, 128, 128, 2)
+Loaded 974 samples.
+Dataset shape: (974, 128, 128, 2)
+  test: SRCNN inference done
+  test: DSC/MS inference done
+  test: PRUSR inference done
+  test: SRNO inference done
+/home/lcadame/Vinicius_Thesis/Vinicius/analises/parcial_03/../parcial_02/diagnostico.py:109: RuntimeWarning: invalid value encountered in divide
+  T_k, eps = pp / tt, ee / tt
+/home/lcadame/Vinicius_Thesis/Vinicius/analises/parcial_03/../parcial_02/diagnostico.py:110: RuntimeWarning: invalid value encountered in divide
+  coh = (pp + tt - ee) / (2 * np.sqrt(pp * tt))
+identidade ok
+Wiener ok
+SRCNN ok
+DSC/MS ok
+PRUSR ok
+SRNO ok
+done

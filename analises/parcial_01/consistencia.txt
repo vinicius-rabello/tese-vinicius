@@ -1,0 +1,5 @@
+SRCNN      R=5.326794 offset=-2.457645 lpips_scale=2.869149 max|PSNR-10log10(R^2/MSE)|=4.71e-06 dB  n=974
+DSC/MS     R=5.326794 offset=-2.457645 lpips_scale=2.869149 max|PSNR-10log10(R^2/MSE)|=4.58e-06 dB  n=974
+identidade R=5.326794 offset=-2.457645 lpips_scale=2.869149 max|PSNR-10log10(R^2/MSE)|=3.41e-06 dB  n=974
+Wiener     R=5.326794 offset=-2.457645 lpips_scale=2.869149 max|PSNR-10log10(R^2/MSE)|=4.35e-06 dB  n=974
+constants identical across all four: True; expected R=5.326794, offset=-2.457645, lpips_scale=2.869149: True

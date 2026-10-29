@@ -1,0 +1,23 @@
+inicio 2026-10-14 12:27:03
+baseline identity: mse 0.004554 psnr 38.071 ssim 0.9614
+baseline wiener: mse 0.0003236 psnr 49.547 ssim 0.9968 (gamma 1e-12)
+baseline identity: mse 0.004554 psnr 38.071 ssim 0.9614
+baseline wiener: mse 0.0009436 psnr 44.904 ssim 0.9923 (gamma 3.16e-06)
+baseline identity: mse 0.004555 psnr 38.070 ssim 0.9614
+baseline wiener: mse 0.001398 psnr 43.200 ssim 0.9879 (gamma 0.000316)
+baseline identity: mse 0.004563 psnr 38.062 ssim 0.9611
+baseline wiener: mse 0.00169 psnr 42.360 ssim 0.9830 (gamma 0.001)
+baseline identity: mse 0.004654 psnr 37.971 ssim 0.9586
+baseline wiener: mse 0.002284 psnr 41.054 ssim 0.9768 (gamma 0.01)
+baseline identity: mse 0.005455 psnr 37.249 ssim 0.9369
+baseline wiener: mse 0.003299 psnr 39.430 ssim 0.9642 (gamma 0.0316)
+baseline identity: mse 0.01456 psnr 32.911 ssim 0.7488
+baseline wiener: mse 0.006972 psnr 36.142 ssim 0.9338 (gamma 0.1)
+results/A_srcnn_res_lam0_seed0 [test]: mse 0.0008302 psnr 45.566 ssim 0.9846
+results/A_dscms_res_lam0_seed0 [test]: mse 0.0007806 psnr 45.823 ssim 0.9857
+results/A_prusr_res_lam0_seed0 [test]: mse 0.0006489 psnr 46.645 ssim 0.9870
+results/B_srcnn_res_lam0.001_seed0 [test]: mse 0.0008047 psnr 45.696 ssim 0.9852
+results/B_srcnn_res_lam0.01_seed0 [test]: mse 0.0007532 psnr 45.967 ssim 0.9862
+results/B_srcnn_res_lam0.1_seed0 [test]: mse 0.0006432 psnr 46.650 ssim 0.9879
+results/B_srcnn_res_lam1_seed0 [test]: mse 0.0006791 psnr 46.389 ssim 0.9878
+fim 2026-10-14 13:29:46

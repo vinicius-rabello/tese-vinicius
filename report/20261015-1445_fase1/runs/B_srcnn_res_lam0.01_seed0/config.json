@@ -1,0 +1,68 @@
+{
+  "run_id": "B_srcnn_res_lam0.01_seed0",
+  "config_file": "configs/B/B_srcnn_res_lam0.01_seed0.yaml",
+  "config": {
+    "MODEL_NAME": "srcnn",
+    "RUN_NAME": "B_srcnn",
+    "DEVICE": "cuda",
+    "NUM_WORKERS": 4,
+    "BATCH_SIZE": 32,
+    "LEARNING_RATE": 0.0001,
+    "LAMBDA": 0.01,
+    "RESIDUAL": true,
+    "SEED": 0,
+    "IMAGE_SAVE_INTERVAL": 25
+  },
+  "seed": 0,
+  "model": "srcnn",
+  "residual": true,
+  "lambda": 0.01,
+  "noise_std": 0.0,
+  "loss": "mse + lambda * lpips (lpips: vgg, fields / lpips_scale, channel repeated x3, mean of u and v)",
+  "n_params": 63266,
+  "git": {
+    "commit": "b25f1f3e56649efb4a10a68fdbaedadfd8199d4b",
+    "dirty": false
+  },
+  "libraries": {
+    "python": "3.11.14",
+    "torch": "2.8.0+cu128",
+    "numpy": "2.3.2",
+    "cuda": "12.8",
+    "cudnn": 91002,
+    "gpu": "Tesla V100-PCIE-16GB",
+    "lpips": "0.1.4",
+    "torchvision": "0.23.0",
+    "pyyaml": "6.0.3"
+  },
+  "deterministic": false,
+  "deterministic_algorithms": true,
+  "created": "2026-10-06T15:48:54.706712",
+  "stopping": {
+    "metric": "val_mse",
+    "relative_min_delta": 0.001,
+    "patience": 15,
+    "min_epochs": 50,
+    "max_epochs": 300
+  },
+  "scheduler": {
+    "type": "ReduceLROnPlateau",
+    "metric": "val_mse",
+    "patience": 5,
+    "factor": 0.5,
+    "threshold": 0.0001,
+    "threshold_mode": "rel"
+  },
+  "psnr_ssim_R": 5.326794147491455,
+  "hr_train_min": -2.4576449394226074,
+  "lpips_scale": 2.8691492080688477,
+  "resumes": [
+    {
+      "time": "2026-10-07T09:40:18.908601",
+      "git": {
+        "commit": "b25f1f3e56649efb4a10a68fdbaedadfd8199d4b",
+        "dirty": false
+      }
+    }
+  ]
+}

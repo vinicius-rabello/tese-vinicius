@@ -1,0 +1,48 @@
+/home/lcadame/Vinicius_Thesis/Vinicius/venv/lib/python3.11/site-packages/torchvision/models/_utils.py:208: UserWarning: The parameter 'pretrained' is deprecated since 0.13 and may be removed in the future, please use 'weights' instead.
+  warnings.warn(
+/home/lcadame/Vinicius_Thesis/Vinicius/venv/lib/python3.11/site-packages/torchvision/models/_utils.py:223: UserWarning: Arguments other than a weight enum or `None` for 'weights' are deprecated since 0.13 and may be removed in the future. The current behavior is equivalent to passing `weights=VGG16_Weights.IMAGENET1K_V1`. You can also use `weights=VGG16_Weights.DEFAULT` to get the most up-to-date weights.
+  warnings.warn(msg)
+/home/lcadame/Vinicius_Thesis/Vinicius/venv/lib/python3.11/site-packages/torchvision/models/_utils.py:223: UserWarning: Arguments other than a weight enum or `None` for 'weights' are deprecated since 0.13 and may be removed in the future. The current behavior is equivalent to passing `weights=AlexNet_Weights.IMAGENET1K_V1`. You can also use `weights=AlexNet_Weights.DEFAULT` to get the most up-to-date weights.
+  warnings.warn(msg)
+Loading datasets...
+./hycom_numpy/hycom_2022.npy: (365, 128, 128, 2)
+./hycom_numpy/hycom_2023.npy: (365, 128, 128, 2)
+./hycom_numpy/hycom_2024.npy: (244, 128, 128, 2)
+Loaded 974 samples.
+Dataset shape: (974, 128, 128, 2)
+results/A_srno_res_lam0_seed0 [test]: mse 0.0005818 psnr 47.105 ssim 0.9889
+Loading datasets...
+./hycom_numpy/hycom_2022.npy: (365, 128, 128, 2)
+./hycom_numpy/hycom_2023.npy: (365, 128, 128, 2)
+./hycom_numpy/hycom_2024.npy: (244, 128, 128, 2)
+Loaded 974 samples.
+Dataset shape: (974, 128, 128, 2)
+results/A_sofono_res_lam0_seed0 [test]: mse 0.0005075 psnr 47.721 ssim 0.9902
+Loading datasets...
+./hycom_numpy/hycom_2022.npy: (365, 128, 128, 2)
+./hycom_numpy/hycom_2023.npy: (365, 128, 128, 2)
+./hycom_numpy/hycom_2024.npy: (244, 128, 128, 2)
+Loaded 974 samples.
+Dataset shape: (974, 128, 128, 2)
+results/B_srno_res_lam0.001_seed0 [test]: mse 0.0005489 psnr 47.349 ssim 0.9897
+Loading datasets...
+./hycom_numpy/hycom_2022.npy: (365, 128, 128, 2)
+./hycom_numpy/hycom_2023.npy: (365, 128, 128, 2)
+./hycom_numpy/hycom_2024.npy: (244, 128, 128, 2)
+Loaded 974 samples.
+Dataset shape: (974, 128, 128, 2)
+results/B_srno_res_lam0.01_seed0 [test]: mse 0.0004346 psnr 48.356 ssim 0.9916
+Loading datasets...
+./hycom_numpy/hycom_2022.npy: (365, 128, 128, 2)
+./hycom_numpy/hycom_2023.npy: (365, 128, 128, 2)
+./hycom_numpy/hycom_2024.npy: (244, 128, 128, 2)
+Loaded 974 samples.
+Dataset shape: (974, 128, 128, 2)
+results/B_srno_res_lam0.1_seed0 [test]: mse 0.0002318 psnr 51.083 ssim 0.9958
+Loading datasets...
+./hycom_numpy/hycom_2022.npy: (365, 128, 128, 2)
+./hycom_numpy/hycom_2023.npy: (365, 128, 128, 2)
+./hycom_numpy/hycom_2024.npy: (244, 128, 128, 2)
+Loaded 974 samples.
+Dataset shape: (974, 128, 128, 2)
+results/B_srno_res_lam1_seed0 [test]: mse 0.0001179 psnr 54.027 ssim 0.9980
